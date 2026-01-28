@@ -53,3 +53,12 @@ dkms.conf
 
 # debug information files
 *.dwo
+/cmake-build-debug/
+/.vscode/
+/.idea/
+.idea/.name
+.idea/c-vector.iml
+.idea/editor.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
