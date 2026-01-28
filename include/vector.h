@@ -2,8 +2,6 @@
 #define C_VECTOR
 
 #if defined(C_VECTOR)
-
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,6 +57,6 @@ static void cvec_append(c_vector* arr, const void* value) {
     arr->size++;
 }
 
-#define cvec_at(arr, index, type) (*(type*)((uint8_t*)arr.data + (index * arr.element_size)))
+#define cvec_at(arr, index, type) (*(type*)((uint8_t*)(arr).data + (index * arr.element_size)))
 
 #endif //C_VECTOR
