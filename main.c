@@ -1,4 +1,6 @@
 #include <stdio.h>
+
+#define C_VECTOR
 #include "include/vector.h"
 
 int main() {
