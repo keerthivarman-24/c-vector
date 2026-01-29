@@ -11,6 +11,15 @@ int main() {
     cvec_append(&vec, &a);
     cvec_append(&vec, &b);
     cvec_append(&vec, &c);
+    cvec_append(&vec, &a);
+    cvec_append(&vec, &b);
+    cvec_append(&vec, &c);
+
+    for (int i = 0; i < vec.size; i++) {
+        printf("vector[%d] = %d\n", i, cvec_at(vec, i, int));
+    }
+
+    cvec_remove(&vec, 1);
 
     for (int i = 0; i < vec.size; i++) {
         printf("vector[%d] = %d\n", i, cvec_at(vec, i, int));
