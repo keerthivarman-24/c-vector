@@ -24,7 +24,8 @@ static void custom_die(const char* msg) {
 }
 
 static void cvec_init(c_vector* arr, const size_t element_size) {
-    if (!arr || element_size == 0) custom_die("cvec_init: invalid args");
+    if (!arr) custom_die("cvec_init: arr is NULL");
+    if (element_size == 0) custom_die("cvec_init: element_size must be > 0");
     arr->element_size = element_size;
     arr->size = 0;
     arr->capacity = 8;
@@ -34,8 +35,8 @@ static void cvec_init(c_vector* arr, const size_t element_size) {
 }
 
 static void cvec_delete(c_vector* arr) {
-    if (!arr) return;
-    free(arr->data);
+    if (!arr) custom_die("cvec_delete: arr is NULL");
+    if (arr->data) free(arr->data);
     arr->data = nullptr;
     arr->size = 0;
     arr->capacity = 0;
@@ -73,6 +74,18 @@ static void cvec_remove(c_vector* arr, const size_t index) {
 static void cvec_clear(c_vector* arr) {
     if (!arr) custom_die("cvec_clear: arr is NULL");
     arr->size = 0;
+}
+
+static void cvec_reserve(c_vector* arr, const size_t capacity) {
+    if (!arr) custom_die("cvec_reserve: arr is NULL");
+    if (capacity == 0) custom_die("cvec_reserve: capacity must be > 0");
+    if (arr->element_size == 0) custom_die("cvec_reserve: element_size must be > 0");
+    if (capacity <= arr->capacity) return;
+
+    void *tmp = realloc(arr->data, arr->element_size * capacity);
+    if (!tmp) die("Failed to reallocate memory");
+    arr->data = tmp;
+    arr->capacity = capacity;
 }
 
 #define cvec_at(arr, index, type) (*(type*)((uint8_t*)(arr).data + ((index) * (arr).element_size)))
