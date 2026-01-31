@@ -1,3 +1,4 @@
+// Simple demonstration of c_vector library
 #include <stdio.h>
 
 #define C_VECTOR
@@ -5,26 +6,24 @@
 
 int main() {
     c_vector vec;
-
+    
+    // Initialize vector for integers
     cvec_init(&vec, sizeof(int));
-    int a = 10, b = 20, c = 30;
-    cvec_append(&vec, &a);
-    cvec_append(&vec, &b);
-    cvec_append(&vec, &c);
-    cvec_append(&vec, &a);
-    cvec_append(&vec, &b);
-    cvec_append(&vec, &c);
-
-    for (int i = 0; i < vec.size; i++) {
-        printf("vector[%d] = %d\n", i, cvec_at(vec, i, int));
+    
+    // Add some elements
+    int values[] = {10, 20, 30, 40, 50};
+    for (int i = 0; i < 5; i++) {
+        cvec_append(&vec, &values[i]);
     }
-
-    cvec_remove(&vec, 1);
-
-    for (int i = 0; i < vec.size; i++) {
-        printf("vector[%d] = %d\n", i, cvec_at(vec, i, int));
+    
+    // Display elements
+    printf("Vector contents: ");
+    for (size_t i = 0; i < vec.size; i++) {
+        printf("%d ", cvec_at(vec, i, int));
     }
-
+    printf("\n");
+    
+    // Clean up
     cvec_delete(&vec);
     return 0;
 }

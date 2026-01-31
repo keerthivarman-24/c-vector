@@ -1,13 +1,14 @@
 # C-Vector
 
-A lightweight, generic dynamic array (vector) implementation in C23, providing type-safe operations with automatic memory management.
+A lightweight, generic dynamic array (vector) implementation in C23, providing type-safe operations with automatic memory management and overflow protection.
 
 ## Features
 
 - **Generic Type Support** - Works with any data type using `void*` pointers
-- **Dynamic Resizing** - Automatically grows capacity when needed
-- **Memory Safe** - Comprehensive error checking and cleanup functions
-- **Type-Safe Access** - Macro-based element access with compile-time type checking
+- **Dynamic Resizing** - Automatically grows capacity with 1.5x growth factor
+- **Memory Safe** - Comprehensive error checking, overflow protection, and cleanup functions
+- **Type-Safe Access** - Multiple access methods: fast macro or safe function-based
+- **Modern C23** - Uses `nullptr` and modern C features
 - **Header-Only** - Simple single-header library design
 
 ## Quick Start
@@ -41,8 +42,8 @@ int main() {
     cvec_append(&vec, &c);
     
     // Access elements
-    for (int i = 0; i < vec.size; i++) {
-        printf("vector[%d] = %d\n", i, cvec_at(vec, i, int));
+    for (size_t i = 0; i < vec.size; i++) {
+        printf("vector[%zu] = %d\n", i, cvec_at(vec, i, int));
     }
     
     // Clean up
@@ -64,58 +65,175 @@ typedef struct {
 } c_vector;
 ```
 
-### Functions
+### Core Functions
 
 #### `cvec_init`
 ```c
-void cvec_init(c_vector* arr, const size_t element_size)
+static void cvec_init(c_vector* arr, const size_t element_size)
 ```
 Initializes a new vector with the specified element size.
 
 - **Parameters:**
   - `arr` - Pointer to the vector to initialize
   - `element_size` - Size of each element in bytes (use `sizeof(type)`)
+- **Initial Capacity:** 8 elements
 - **Example:** `cvec_init(&vec, sizeof(int));`
+
+---
+
+#### `cvec_delete`
+```c
+static void cvec_delete(c_vector* arr)
+```
+Frees all memory associated with the vector and resets its state. Safe to call multiple times.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector to delete
+- **Example:** `cvec_delete(&vec);`
+
+---
 
 #### `cvec_append`
 ```c
 static void cvec_append(c_vector* arr, const void* value)
 ```
-Appends an element to the end of the vector. Automatically resizes if needed.
+Appends an element to the end of the vector. Automatically resizes if needed (1.5x growth).
 
 - **Parameters:**
   - `arr` - Pointer to the vector
   - `value` - Pointer to the value to append
+- **Time Complexity:** O(1) amortized, O(n) when resizing
 - **Example:** 
   ```c
   int value = 42;
   cvec_append(&vec, &value);
   ```
 
-#### `cvec_delete`
+---
+
+#### `cvec_remove`
 ```c
-static void cvec_delete(c_vector* arr)
+static void cvec_remove(c_vector* arr, const size_t index)
 ```
-Frees all memory associated with the vector and resets its state.
+Removes element at the specified index. Shifts subsequent elements left.
 
 - **Parameters:**
-  - `arr` - Pointer to the vector to delete
-- **Example:** `cvec_delete(&vec);`
+  - `arr` - Pointer to the vector
+  - `index` - Index of element to remove
+- **Time Complexity:** O(n) due to element shifting
+- **Example:** `cvec_remove(&vec, 2);`
 
-#### `cvec_at`
+---
+
+#### `cvec_clear`
+```c
+static void cvec_clear(c_vector* arr)
+```
+Resets the vector size to 0 without freeing memory. Keeps capacity unchanged.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+- **Example:** `cvec_clear(&vec);`
+
+---
+
+### Safe Access Functions
+
+#### `cvec_get`
+```c
+static void* cvec_get(c_vector* arr, const size_t index)
+```
+Returns pointer to element at index with bounds checking. Safe for general use.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+  - `index` - Index of element to retrieve
+- **Returns:** Pointer to the element (must cast to correct type)
+- **Example:** 
+  ```c
+  int* value_ptr = (int*)cvec_get(&vec, 0);
+  printf("Value: %d\n", *value_ptr);
+  ```
+
+---
+
+#### `cvec_set`
+```c
+static void cvec_set(c_vector* arr, const size_t index, const void* value)
+```
+Sets element at index with bounds checking. Safe for modifying elements.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+  - `index` - Index of element to modify
+  - `value` - Pointer to new value
+- **Example:** 
+  ```c
+  int new_value = 100;
+  cvec_set(&vec, 0, &new_value);
+  ```
+
+---
+
+#### `cvec_at` (Macro)
 ```c
 #define cvec_at(arr, index, type)
 ```
-Macro for type-safe element access at a given index.
+Fast, unchecked macro for element access. Use when performance is critical and bounds are verified.
 
 - **Parameters:**
   - `arr` - The vector (passed by value, not pointer)
-  - `index` - Zero-based index of the element
+  - `index` - Zero-based index
   - `type` - The data type to cast to
 - **Returns:** The element at the specified index
+- **Warning:** No bounds checking - unsafe if index is out of range
 - **Example:** `int val = cvec_at(vec, 0, int);`
 
-## Advanced Usage
+---
+
+### Advanced Functions
+
+#### `cvec_reserve`
+```c
+static void cvec_reserve(c_vector* arr, const size_t capacity)
+```
+Pre-allocates memory for the specified capacity. Prevents multiple reallocations.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+  - `capacity` - Desired capacity
+- **Use Case:** When you know the final size in advance
+- **Example:** `cvec_reserve(&vec, 1000);`
+
+---
+
+#### `cvec_to_array`
+```c
+static void* cvec_to_array(c_vector* arr)
+```
+Creates a heap-allocated copy of the vector's data as a regular array.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+- **Returns:** Pointer to new array (caller must `free()`)
+- **Warning:** Caller is responsible for freeing the returned pointer
+- **Example:** 
+  ```c
+  int* array = (int*)cvec_to_array(&vec);
+  // Use array...
+  free(array);
+  ```
+
+---
+
+## Examples
+
+Check the `examples/` folder for detailed examples:
+
+- **[basic_usage.c](examples/basic_usage.c)** - Basic operations (init, append, remove, clear)
+- **[custom_types.c](examples/custom_types.c)** - Using vectors with custom struct types
+- **[advanced_operations.c](examples/advanced_operations.c)** - Reserve, get/set, to_array
+- **[different_types.c](examples/different_types.c)** - Vectors with various data types
 
 ### Working with Custom Types
 
@@ -123,43 +241,22 @@ Macro for type-safe element access at a given index.
 typedef struct {
     int id;
     char name[50];
-} Person;
+    double score;
+} Student;
 
-c_vector people;
-cvec_init(&people, sizeof(Person));
+c_vector students;
+cvec_init(&students, sizeof(Student));
 
-Person p1 = {1, "Alice"};
-Person p2 = {2, "Bob"};
+Student s1 = {1, "Alice", 95.5};
+cvec_append(&students, &s1);
 
-cvec_append(&people, &p1);
-cvec_append(&people, &p2);
+// Access with macro
+Student retrieved = cvec_at(students, 0, Student);
 
-// Access elements
-Person retrieved = cvec_at(people, 0, Person);
-printf("Person: %s (ID: %d)\n", retrieved.name, retrieved.id);
+// Access with safe function
+Student* ptr = (Student*)cvec_get(&students, 0);
 
-cvec_delete(&people);
-```
-
-### Working with Pointers
-
-```c
-c_vector ptr_vec;
-cvec_init(&ptr_vec, sizeof(int*));
-
-int* values[3];
-for (int i = 0; i < 3; i++) {
-    values[i] = malloc(sizeof(int));
-    *values[i] = i * 10;
-    cvec_append(&ptr_vec, &values[i]);
-}
-
-// Remember to free pointer contents
-for (int i = 0; i < ptr_vec.size; i++) {
-    int* ptr = cvec_at(ptr_vec, i, int*);
-    free(ptr);
-}
-cvec_delete(&ptr_vec);
+cvec_delete(&students);
 ```
 
 ## Building
@@ -168,49 +265,46 @@ cvec_delete(&ptr_vec);
 - C23 compatible compiler (GCC 14+, Clang 18+, or MSVC 2022+)
 - CMake 3.20+ (optional, for building examples)
 
-### Compile with CMake
+### Compile Examples
 ```bash
+# Compile specific example
+gcc -std=c23 -o basic examples/basic_usage.c
+
+# Compile with CMake
 mkdir build && cd build
 cmake ..
 cmake --build .
-./c_vector  # Run the example
 ```
 
-### Compile Manually
+### Compile Main Demo
 ```bash
 gcc -std=c23 -o main main.c
+./main
 ```
 
 ## Memory Management
 
 The vector automatically manages its internal memory:
 - **Initial Capacity:** 8 elements
-- **Growth Strategy:** Doubles capacity when full
+- **Growth Strategy:** 1.5x growth factor (more memory-efficient than 2x)
+- **Overflow Protection:** All allocations checked for SIZE_MAX overflow
 - **Manual Cleanup:** Always call `cvec_delete()` to free memory
-
-## Error Handling
-
-The library includes built-in error checking:
-- Invalid arguments trigger error messages and exit
-- Memory allocation failures are caught and reported
-- All errors exit with `EXIT_FAILURE`
 
 ## Performance Characteristics
 
 | Operation | Time Complexity | Notes |
 |-----------|----------------|-------|
-| `cvec_init` | O(1) | Allocates initial capacity |
-| `cvec_append` | O(1) amortized | O(n) when resizing |
-| `cvec_at` | O(1) | Direct memory access |
+| `cvec_init` | O(1) | Allocates initial capacity of 8 |
+| `cvec_append` | O(1) amortized | O(n) when resizing needed |
+| `cvec_get` | O(1) | Includes bounds check |
+| `cvec_set` | O(1) | Includes bounds check |
+| `cvec_at` | O(1) | No bounds check (fastest) |
+| `cvec_remove` | O(n) | Must shift elements |
+| `cvec_clear` | O(1) | Only resets size counter |
 | `cvec_delete` | O(1) | Frees all memory |
-
-## Safety Features
-
-- **Type Safety:** Macro-based access provides compile-time type checking
-- **Bounds Checking:** No automatic bounds checking (use manual checks if needed)
-- **Double Evaluation Protection:** Macro parameters properly parenthesized
-- **Memory Leak Prevention:** Single `cvec_delete()` call frees all memory
+| `cvec_reserve` | O(n) | If reallocation needed |
+| `cvec_to_array` | O(n) | Copies all elements |
 
 ## Acknowledgments
 
-Built with modern C23 features for improved type safety and code clarity.
+Built with modern C23 features for improved type safety, code clarity, and memory safety.
