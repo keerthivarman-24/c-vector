@@ -43,6 +43,20 @@ static void cvec_delete(c_vector* arr) {
     arr->element_size = 0;
 }
 
+static void* cvec_get(c_vector* arr, const size_t index) {
+    if (!arr) custom_die("cvec_get: arr is NULL");
+    if (index >= arr->size) custom_die("cvec_get: index is out of range");
+
+    return (uint8_t*)arr->data + index * arr->element_size;
+}
+
+static void cvec_set(c_vector* arr, const size_t index, const void* value) {
+    if (!arr || !value) custom_die("cvec_set: invalid args");
+    if (index >= arr->size) custom_die("cvec_set: index is out of range");
+
+    memcpy(cvec_get(arr, index), value,  arr->element_size);
+}
+
 static void cvec_append(c_vector* arr, const void* value) {
     if (!arr || !value) custom_die("cvec_append: invalid args");
 
@@ -63,10 +77,10 @@ static void cvec_remove(c_vector* arr, const size_t index) {
 
     if (arr->size - index - 1 > 0) {
         memmove(
-            (uint8_t*)arr->data + (index) * arr->element_size,
+            (uint8_t*)arr->data + index * arr->element_size,
             (uint8_t*)arr->data + (index + 1) * arr->element_size,
             (arr->size - index - 1) * arr->element_size
-            );
+        );
     }
     arr->size--;
 }
