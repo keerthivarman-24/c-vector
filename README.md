@@ -8,7 +8,6 @@ A lightweight, generic dynamic array (vector) implementation in C23, providing t
 - **Dynamic Resizing** - Automatically grows capacity with 1.5x growth factor
 - **Memory Safe** - Comprehensive error checking, overflow protection, and cleanup functions
 - **Type-Safe Access** - Multiple access methods: fast macro or safe function-based
-- **Modern C23** - Uses `nullptr` and modern C features
 - **Header-Only** - Simple single-header library design
 
 ## Quick Start
