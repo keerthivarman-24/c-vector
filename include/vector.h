@@ -81,6 +81,24 @@ static void cvec_append(c_vector* arr, const void* value) {
     arr->size++;
 }
 
+#define cvec(array) cvec_from_array((array), sizeof(array) / sizeof((array)[0]), sizeof((array)[0]))
+
+static c_vector cvec_from_array(void* data, size_t count, size_t element_size) {
+    if (!data) custom_die("cvec_from_array: data is NULL");
+    if (count == 0) custom_die("cvec_from_array: count must be > 0");
+    if (element_size == 0) custom_die("cvec_from_array: element_size must be > 0");
+
+    c_vector arr;
+    cvec_init(&arr, element_size);
+    cvec_reserve(&arr, count);  // Reserve exact capacity to avoid reallocations
+
+    for (size_t i = 0; i < count; i++) {
+        cvec_append(&arr, (uint8_t*)data + i * element_size);
+    }
+    return arr;
+}
+
+
 static void cvec_remove(c_vector* arr, const size_t index) {
     if (!arr) custom_die("cvec_remove: arr is NULL");
     if (index >= arr->size) custom_die("cvec_remove: index is out of range");
@@ -130,6 +148,6 @@ static void* cvec_to_array(c_vector* arr) {
     return array;
 }
 
-#define cvec_at(arr, index, type) (*(type*)((uint8_t*)(arr).data + ((index) * (arr).element_size)))
+#define cvec_at(arr, index, type) (*(type*)cvec_get(&(arr), (index)))
 
 #endif //C_VECTOR
