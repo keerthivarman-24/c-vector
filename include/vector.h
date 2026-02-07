@@ -35,7 +35,7 @@ static void cvec_init(c_vector* arr, const size_t element_size) {
     }
 
     arr->data = malloc(element_size * arr->capacity);
-    if (!arr->data) die("failed to allocate memory");
+    if (!arr->data) die("cvec_init: Failed to allocate memory");
 }
 
 static void cvec_delete(c_vector* arr) {
@@ -73,7 +73,7 @@ static void cvec_append(c_vector* arr, const void* value) {
             custom_die("cvec_append: allocation size overflow");
         }
         void* tmp = realloc(arr->data, arr->element_size * arr->capacity);
-        if (!tmp) die("failed to reallocate memory");
+        if (!tmp) die("cvec_append: Failed to reallocate memory");
         arr->data = tmp;
     }
 
@@ -128,7 +128,7 @@ static void cvec_reserve(c_vector* arr, const size_t capacity) {
     }
 
     void *tmp = realloc(arr->data, arr->element_size * capacity);
-    if (!tmp) die("Failed to reallocate memory");
+    if (!tmp) die("cvec_reserve: Failed to reallocate memory");
     arr->data = tmp;
     arr->capacity = capacity;
 }
