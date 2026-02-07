@@ -159,9 +159,19 @@ static void* cvec_to_array(c_vector* arr) {
     }
 
     void* array = malloc(arr->element_size * arr->size);
-    if (!array) die("failed to allocate memory");
+    if (!array) die("cvec_to_array: Failed to allocate memory");
     memcpy(array, arr->data, arr->element_size * arr->size);
     return array;
+}
+
+static void cvec_shrink_to_fit(c_vector* arr) {
+    if (!arr) custom_die("cvec_shrink_to_fit: arr is NULL");
+    if (arr->size == arr->capacity) return;
+
+    void* tmp = realloc(arr->data, arr->element_size * arr->capacity);
+    if (!tmp) { die("cvec_shrink_to_fit: Failed to reallocate memory"); }
+    arr->data = tmp;
+    arr->capacity = arr->size;
 }
 
 #define cvec_at(arr, index, type) (*(type*)cvec_get(&(arr), (index)))
