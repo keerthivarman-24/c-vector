@@ -6,39 +6,37 @@
 #include "../include/vector.h"
 
 // Example 1: Stack implementation using c_vector
-typedef struct {
-    c_vector vec;
-} Stack;
+typedef c_vector Stack;
 
 void stack_init(Stack* s, size_t element_size) {
-    cvec_init(&s->vec, element_size);
+    cvec_init(s, element_size);
 }
 
 void stack_push(Stack* s, const void* value) {
-    cvec_append(&s->vec, value);
+    cvec_append(s, value);
 }
 
 void* stack_top(Stack* s) {
-    if (cvec_is_empty(&s->vec)) return nullptr;
-    return cvec_back(&s->vec);
+    if (cvec_is_empty(s)) return nullptr;
+    return cvec_back(s);
 }
 
 void stack_pop(Stack* s) {
-    if (!cvec_is_empty(&s->vec)) {
-        cvec_remove(&s->vec, s->vec.size - 1);
+    if (!cvec_is_empty(s)) {
+        cvec_remove(s, s->size - 1);
     }
 }
 
 int stack_is_empty(Stack* s) {
-    return cvec_is_empty(&s->vec);
+    return cvec_is_empty(s);
 }
 
 size_t stack_size(Stack* s) {
-    return s->vec.size;
+    return s->size;
 }
 
 void stack_delete(Stack* s) {
-    cvec_delete(&s->vec);
+    cvec_delete(s);
 }
 
 void demo_stack() {
