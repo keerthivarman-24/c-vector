@@ -64,7 +64,7 @@ static void cvec_set(c_vector* arr, const size_t index, const void* value) {
 static void cvec_append(c_vector* arr, const void* value) {
     if (!arr || !value) custom_die("cvec_append: invalid args");
 
-    if (arr->size == arr->capacity) {
+    if (arr->size >= arr->capacity) {
         if (arr->capacity > SIZE_MAX - (arr->capacity >> 1)) {
             custom_die("cvec_append: capacity overflow");
         }
@@ -172,6 +172,35 @@ static void cvec_shrink_to_fit(c_vector* arr) {
     if (!tmp) { die("cvec_shrink_to_fit: Failed to reallocate memory"); }
     arr->data = tmp;
     arr->capacity = arr->size;
+}
+
+static void cvec_insert(c_vector* arr, const size_t index, const void* value) {
+    if (!arr || !value) custom_die("cvec_insert: invalid args");
+    if (index > arr->size) custom_die("cvec_insert: index is out of range");
+
+    if (arr->size >= arr->capacity) {
+        if (arr->capacity > SIZE_MAX - (arr->capacity >> 1)) {
+            custom_die("cvec_insert: capacity overflow");
+        }
+        arr->capacity += arr->capacity >> 1;
+        if (arr->capacity > SIZE_MAX / arr->element_size) {
+            custom_die("cvec_insert: allocation size overflow");
+        }
+        void* tmp = realloc(arr->data, arr->element_size * arr->capacity);
+        if (!tmp) die("failed to reallocate memory");
+        arr->data = tmp;
+    }
+
+    if (index < arr->size) {
+        memmove(
+            (uint8_t*)arr->data + (index + 1) * arr->element_size,
+            (uint8_t*)arr->data + index * arr->element_size,
+            (arr->size - index) * arr->element_size
+        );
+    }
+
+    memcpy((uint8_t*)arr->data + index * arr->element_size, value, arr->element_size);
+    arr->size++;
 }
 
 #define cvec_at(arr, index, type) (*(type*)cvec_get(&(arr), (index)))
