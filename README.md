@@ -135,6 +135,61 @@ Resets the vector size to 0 without freeing memory. Keeps capacity unchanged.
 
 ---
 
+#### `cvec_is_empty`
+```c
+static bool cvec_is_empty(const c_vector* arr)
+```
+Checks if the vector is empty.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+- **Returns:** `true` if vector is empty, `false` otherwise
+- **Time Complexity:** O(1)
+- **Example:** 
+  ```c
+  if (cvec_is_empty(&vec)) {
+      printf("Vector is empty\n");
+  }
+  ```
+
+---
+
+#### `cvec_front`
+```c
+static void* cvec_front(c_vector* arr)
+```
+Returns pointer to the first element in the vector.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+- **Returns:** Pointer to the first element
+- **Time Complexity:** O(1)
+- **Example:** 
+  ```c
+  int* first = (int*)cvec_front(&vec);
+  printf("First element: %d\n", *first);
+  ```
+
+---
+
+#### `cvec_back`
+```c
+static void* cvec_back(c_vector* arr)
+```
+Returns pointer to the last element in the vector.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+- **Returns:** Pointer to the last element
+- **Time Complexity:** O(1)
+- **Example:** 
+  ```c
+  int* last = (int*)cvec_back(&vec);
+  printf("Last element: %d\n", *last);
+  ```
+
+---
+
 ### Safe Access Functions
 
 #### `cvec_get`
@@ -191,6 +246,31 @@ Fast, unchecked macro for element access. Use when performance is critical and b
 
 ### Advanced Functions
 
+#### `cvec_from_array` (and `cvec` macro)
+```c
+#define cvec(array) cvec_from_array((array), sizeof(array) / sizeof((array)[0]), sizeof((array)[0]))
+
+static c_vector cvec_from_array(const void* data, size_t count, size_t element_size)
+```
+Creates a new vector initialized with data from an existing array.
+
+- **Parameters:**
+  - `data` - Pointer to the array data
+  - `count` - Number of elements in the array
+  - `element_size` - Size of each element in bytes
+- **Returns:** A new `c_vector` initialized with the array data
+- **Time Complexity:** O(n)
+- **Example:** 
+  ```c
+  int arr[] = {10, 20, 30, 40, 50};
+  c_vector vec = cvec(arr);  // Using the convenient macro
+  
+  // Manual usage:
+  c_vector vec2 = cvec_from_array(arr, 5, sizeof(int));
+  ```
+
+---
+
 #### `cvec_reserve`
 ```c
 static void cvec_reserve(c_vector* arr, const size_t capacity)
@@ -220,6 +300,25 @@ Creates a heap-allocated copy of the vector's data as a regular array.
   int* array = (int*)cvec_to_array(&vec);
   // Use array...
   free(array);
+  ```
+
+---
+
+#### `cvec_shrink_to_fit`
+```c
+static void cvec_shrink_to_fit(c_vector* arr)
+```
+Reduces the vector's capacity to match its current size, freeing unused memory.
+
+- **Parameters:**
+  - `arr` - Pointer to the vector
+- **Time Complexity:** O(n) if reallocation needed, O(1) if size equals capacity
+- **Use Case:** When you need to minimize memory usage after removing many elements
+- **Example:** 
+  ```c
+  cvec_reserve(&vec, 1000);
+  cvec_append(&vec, &value);  // Only 1 element
+  cvec_shrink_to_fit(&vec);    // Capacity becomes 1
   ```
 
 ---
@@ -297,11 +396,16 @@ The vector automatically manages its internal memory:
 | `cvec_get` | O(1) | Includes bounds check |
 | `cvec_set` | O(1) | Includes bounds check |
 | `cvec_at` | O(1) | No bounds check (fastest) |
+| `cvec_front` | O(1) | Direct access to first element |
+| `cvec_back` | O(1) | Direct access to last element |
+| `cvec_is_empty` | O(1) | Checks size counter |
 | `cvec_remove` | O(n) | Must shift elements |
 | `cvec_clear` | O(1) | Only resets size counter |
 | `cvec_delete` | O(1) | Frees all memory |
 | `cvec_reserve` | O(n) | If reallocation needed |
+| `cvec_from_array` | O(n) | Copies all elements |
 | `cvec_to_array` | O(n) | Copies all elements |
+| `cvec_shrink_to_fit` | O(n) | If reallocation needed |
 
 ## Acknowledgments
 
