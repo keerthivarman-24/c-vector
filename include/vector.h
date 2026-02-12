@@ -134,6 +134,30 @@ static void cvec_reserve(c_vector* arr, const size_t capacity) {
     arr->capacity = capacity;
 }
 
+static c_vector cvec_reverse(c_vector* arr) {
+    if (!arr) custom_die("cvec_reverse: arr is NULL");
+    if (arr->size <= 1) return *arr;
+    
+    void* tmp = malloc(arr->element_size);
+    if (!tmp) die("cvec_reverse: Failed to allocate temporary buffer");
+    
+    size_t left = 0;
+    size_t right = arr->size - 1;
+    while (left < right) {
+        memcpy(tmp, (uint8_t*)arr->data + left * arr->element_size, arr->element_size);
+        memcpy((uint8_t*)arr->data + left * arr->element_size,
+               (uint8_t*)arr->data + right * arr->element_size,
+               arr->element_size);
+        memcpy((uint8_t*)arr->data + right * arr->element_size, tmp, arr->element_size);
+        
+        left++;
+        right--;
+    }
+    
+    free(tmp);
+    return *arr;
+}
+
 #define cvec(array) cvec_from_array((array), sizeof(array) / sizeof((array)[0]), sizeof((array)[0]))
 
 static c_vector cvec_from_array(const void* data, size_t count, size_t element_size) {
