@@ -18,6 +18,13 @@ int main() {
     for (size_t i = 0; i < vec.size; i++) {
         printf("%d ", cvec_at(vec, i, int));
     }
+
+    printf("\n");
+    printf("Reverse vector contents: ");
+    c_vector re = cvec_reverse(&vec);
+    for (size_t i = 0; i < vec.size; i++) {
+        printf("%d ", cvec_at(re, i, int));
+    }
     printf("\n");
     // Clean up
     cvec_delete(&vec);
