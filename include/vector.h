@@ -41,8 +41,10 @@ static void cvec_init(c_vector* arr, const size_t element_size) {
 
 static void cvec_delete(c_vector* arr) {
     if (!arr) custom_die("cvec_delete: arr is NULL");
-    if (arr->data) free(arr->data);
-    arr->data = nullptr;
+    if (arr->data) {
+        free(arr->data);
+        arr->data = nullptr;
+    }
     arr->size = 0;
     arr->capacity = 0;
     arr->element_size = 0;
@@ -120,8 +122,7 @@ static void cvec_clear(c_vector* arr) {
 
 static void cvec_reserve(c_vector* arr, const size_t capacity) {
     if (!arr) custom_die("cvec_reserve: arr is NULL");
-    if (capacity == 0) custom_die("cvec_reserve: capacity must be > 0");
-    if (arr->element_size == 0) custom_die("cvec_reserve: element_size must be > 0");
+    if (arr->element_size == 0) custom_die("cvec_reserve: element_size not initialized");
     if (capacity <= arr->capacity) return;
 
     if (capacity > SIZE_MAX / arr->element_size) {
@@ -134,9 +135,9 @@ static void cvec_reserve(c_vector* arr, const size_t capacity) {
     arr->capacity = capacity;
 }
 
-static c_vector cvec_reverse(c_vector* arr) {
+static void cvec_reverse(c_vector* arr) {
     if (!arr) custom_die("cvec_reverse: arr is NULL");
-    if (arr->size <= 1) return *arr;
+    if (arr->size <= 1) return;
     
     void* tmp = malloc(arr->element_size);
     if (!tmp) die("cvec_reverse: Failed to allocate temporary buffer");
@@ -144,18 +145,18 @@ static c_vector cvec_reverse(c_vector* arr) {
     size_t left = 0;
     size_t right = arr->size - 1;
     while (left < right) {
-        memcpy(tmp, (uint8_t*)arr->data + left * arr->element_size, arr->element_size);
-        memcpy((uint8_t*)arr->data + left * arr->element_size,
-               (uint8_t*)arr->data + right * arr->element_size,
-               arr->element_size);
-        memcpy((uint8_t*)arr->data + right * arr->element_size, tmp, arr->element_size);
+        void* left_ptr = (uint8_t*)arr->data + left * arr->element_size;
+        void* right_ptr = (uint8_t*)arr->data + right * arr->element_size;
+        
+        memcpy(tmp, left_ptr, arr->element_size);
+        memcpy(left_ptr, right_ptr, arr->element_size);
+        memcpy(right_ptr, tmp, arr->element_size);
         
         left++;
         right--;
     }
     
     free(tmp);
-    return *arr;
 }
 
 #define cvec(array) cvec_from_array((array), sizeof(array) / sizeof((array)[0]), sizeof((array)[0]))
@@ -167,7 +168,7 @@ static c_vector cvec_from_array(const void* data, size_t count, size_t element_s
 
     c_vector arr;
     cvec_init(&arr, element_size);
-    cvec_reserve(&arr, count);  // Reserve exact capacity to avoid reallocations
+    cvec_reserve(&arr, count);
     memcpy(arr.data, data, count * element_size);
     arr.size = count;
     return arr;
@@ -202,6 +203,18 @@ static void cvec_shrink_to_fit(c_vector* arr) {
     if (!tmp) { die("cvec_shrink_to_fit: Failed to reallocate memory"); }
     arr->data = tmp;
     arr->capacity = arr->size;
+}
+
+static void cvec_fill(c_vector* arr, const void* value) {
+    if (!arr) custom_die("cvec_fill: arr is NULL");
+    if (!value) custom_die("cvec_fill: value is NULL");
+    if (arr->element_size == 0) custom_die("cvec_fill: element_size must not be zero");
+    if (!arr->data && arr->capacity > 0) custom_die("cvec_fill: data is NULL");
+
+    arr->size = arr->capacity;
+    for (size_t i = 0; i < arr->size; i++) {
+        memcpy((uint8_t*)arr->data + (i * arr->element_size), value, arr->element_size);
+    }
 }
 
 #define cvec_at(arr, index, type) (*(type*)cvec_get(&(arr), (index)))
