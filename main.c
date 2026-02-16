@@ -35,6 +35,9 @@ int main() {
     for (size_t i = 0; i < vec1.size; i++) {
         printf("%d ", cvec_at(vec1, i, int));
     }
+
+    printf("\n");
+    printf(cvec_to_string(&vec));
     // Clean up
     cvec_delete(&vec);
     cvec_delete(&vec1);

@@ -23,7 +23,6 @@ static void custom_die(const char* msg) {
     exit(EXIT_FAILURE);
 }
 
-
 static void cvec_init(c_vector* arr, const size_t element_size) {
     if (!arr) custom_die("cvec_init: arr is NULL");
     if (element_size == 0) custom_die("cvec_init: element_size must be > 0");
@@ -41,10 +40,10 @@ static void cvec_init(c_vector* arr, const size_t element_size) {
 
 static void cvec_delete(c_vector* arr) {
     if (!arr) custom_die("cvec_delete: arr is NULL");
-    if (arr->data) {
-        free(arr->data);
-        arr->data = nullptr;
-    }
+    if (!arr->data || arr->capacity == 0) custom_die("cvec_delete: vector not initialized");
+    
+    free(arr->data);
+    arr->data = nullptr;
     arr->size = 0;
     arr->capacity = 0;
     arr->element_size = 0;
@@ -194,7 +193,7 @@ static void cvec_shrink_to_fit(c_vector* arr) {
 
     if (arr->size == 0) {
         free(arr->data);
-        arr->data = NULL;
+        arr->data = nullptr;
         arr->capacity = 0;
         return;
     }
@@ -215,6 +214,38 @@ static void cvec_fill(c_vector* arr, const void* value) {
     for (size_t i = 0; i < arr->size; i++) {
         memcpy((uint8_t*)arr->data + (i * arr->element_size), value, arr->element_size);
     }
+}
+
+static char* cvec_to_string(const c_vector* arr) {
+    if (!arr) custom_die("cvec_to_string: arr is NULL");
+    
+    if (arr->size == 0) {
+        char* str = malloc(4);
+        if (!str) die("cvec_to_string: failed to allocate memory");
+        strcpy(str, "[]");
+        return str;
+    }
+
+    // Estimate buffer size: "[ " + (pointer_width * 2 + 2) per element + " ]" + null terminator
+    size_t estimated_size = arr->size * 25 + 10;
+    char* str = malloc(estimated_size);
+    if (!str) die("cvec_to_string: failed to allocate memory");
+
+    strcpy(str, "[ ");
+    
+    // Format each element as pointer address
+    for (size_t i = 0; i < arr->size; i++) {
+        int bytes_written = snprintf(str + strlen(str), estimated_size - strlen(str), 
+                                     "%p%s",
+                                     (uint8_t*)arr->data + (i * arr->element_size),
+                                     i < arr->size - 1 ? ", " : "");
+        if (bytes_written < 0) {
+            custom_die("cvec_to_string: buffer overflow");
+        }
+    }
+    
+    strcat(str, " ]");
+    return str;
 }
 
 #define cvec_at(arr, index, type) (*(type*)cvec_get(&(arr), (index)))
