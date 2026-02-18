@@ -6,12 +6,93 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Error codes
+typedef enum {
+    CVEC_OK = 0,
+    CVEC_ERROR_NULL_POINTER,
+    CVEC_ERROR_OUT_OF_BOUNDS,
+    CVEC_ERROR_ALLOCATION_FAILED,
+    CVEC_ERROR_OVERFLOW,
+    CVEC_ERROR_INVALID_SIZE,
+    CVEC_ERROR_EMPTY_VECTOR,
+    CVEC_ERROR_NOT_INITIALIZED
+} cvec_error_code;
+
 typedef struct {
     void*  data;
     size_t element_size;
     size_t size;
     size_t capacity;
-} c_vector;
+} c_vector_t;
+
+struct cvec_error {
+    cvec_error_code error_code;
+    const char* error_msg;
+};
+
+typedef struct {
+    bool success;
+    struct cvec_error error;
+} cvec_result;
+
+typedef struct {
+    bool success;
+    union {
+        void* ptr;              
+        struct cvec_error error;  
+    } data;
+} cvec_vector_ptr;
+
+typedef struct {
+    bool success;
+    union {
+        c_vector_t vector; 
+        struct cvec_error error; 
+    } data;
+} cvec_vector;
+
+static inline cvec_vector_ptr cvec_vector_ptr_error(cvec_error_code code, const char* msg) {
+    cvec_vector_ptr result;
+    result.success = false;
+    result.data.error.error_code = code;
+    result.data.error.error_msg = msg;
+    return result;
+}
+
+static inline cvec_vector_ptr cvec_ptr_ok(void* ptr) {
+    cvec_vector_ptr result;
+    result.success = true;
+    result.data.ptr = ptr;
+    return result;
+}
+
+static inline cvec_vector cvec_vector_error(cvec_error_code code, const char* msg) {
+    cvec_vector result;
+    result.success = false;
+    result.data.error.error_code = code;
+    result.data.error.error_msg = msg;
+    return result;
+}
+
+static inline cvec_vector cvec_vector_ok(c_vector_t vec) {
+    cvec_vector result;
+    result.success = true;
+    result.data.vector = vec;
+    return result;
+}
+
+static inline cvec_result cvec_error(cvec_error_code code, const char* msg) {
+    cvec_result result;
+    result.success = false;
+    result.error.error_code = code;
+    result.error.error_msg = msg;
+    return result;
+}
+
+static inline cvec_result cvec_ok(void) {
+    cvec_result result = { .success = true, .error = {CVEC_OK, NULL} };
+    return result;
+}
 
 static void die(const char* msg) {
     perror(msg);
@@ -23,7 +104,7 @@ static void custom_die(const char* msg) {
     exit(EXIT_FAILURE);
 }
 
-static void cvec_init(c_vector* arr, const size_t element_size) {
+static void cvec_init(c_vector_t* arr, const size_t element_size) {
     if (!arr) custom_die("cvec_init: arr is NULL");
     if (element_size == 0) custom_die("cvec_init: element_size must be > 0");
     arr->element_size = element_size;
@@ -38,7 +119,7 @@ static void cvec_init(c_vector* arr, const size_t element_size) {
     if (!arr->data) die("cvec_init: Failed to allocate memory");
 }
 
-static void cvec_delete(c_vector* arr) {
+static void cvec_delete(c_vector_t* arr) {
     if (!arr) custom_die("cvec_delete: arr is NULL");
     if (!arr->data || arr->capacity == 0) custom_die("cvec_delete: vector not initialized");
     
@@ -49,21 +130,21 @@ static void cvec_delete(c_vector* arr) {
     arr->element_size = 0;
 }
 
-static void* cvec_get(c_vector* arr, const size_t index) {
+static void* cvec_get(c_vector_t* arr, const size_t index) {
     if (!arr) custom_die("cvec_get: arr is NULL");
     if (index >= arr->size) custom_die("cvec_get: index is out of range");
 
     return (uint8_t*)arr->data + index * arr->element_size;
 }
 
-static void cvec_set(c_vector* arr, const size_t index, const void* value) {
+static void cvec_set(c_vector_t* arr, const size_t index, const void* value) {
     if (!arr || !value) custom_die("cvec_set: invalid args");
     if (index >= arr->size) custom_die("cvec_set: index is out of range");
 
     memcpy(cvec_get(arr, index), value,  arr->element_size);
 }
 
-static void cvec_append(c_vector* arr, const void* value) {
+static void cvec_append(c_vector_t* arr, const void* value) {
     if (!arr || !value) custom_die("cvec_append: invalid args");
 
     if (arr->size == arr->capacity) {
@@ -83,24 +164,24 @@ static void cvec_append(c_vector* arr, const void* value) {
     arr->size++;
 }
 
-static bool cvec_is_empty(const c_vector* arr) {
+static bool cvec_is_empty(const c_vector_t* arr) {
     if (!arr) custom_die("cvec_is_empty: arr is NULL");
     return arr->size == 0;
 }
 
-static void* cvec_front(c_vector* arr) {
+static void* cvec_front(c_vector_t* arr) {
     if (!arr) custom_die("cvec_front: arr is NULL");
     if (arr->size == 0) custom_die("cvec_front: vector is empty");
     return arr->data;
 }
 
-static void* cvec_back(c_vector* arr) {
+static void* cvec_back(c_vector_t* arr) {
     if (!arr) custom_die("cvec_back: arr is NULL");
     if (arr->size == 0) custom_die("cvec_back: vector is empty");
     return cvec_get(arr, arr->size - 1);
 }
 
-static void cvec_remove(c_vector* arr, const size_t index) {
+static void cvec_remove(c_vector_t* arr, const size_t index) {
     if (!arr) custom_die("cvec_remove: arr is NULL");
     if (index >= arr->size) custom_die("cvec_remove: index is out of range");
 
@@ -114,12 +195,12 @@ static void cvec_remove(c_vector* arr, const size_t index) {
     arr->size--;
 }
 
-static void cvec_clear(c_vector* arr) {
+static void cvec_clear(c_vector_t* arr) {
     if (!arr) custom_die("cvec_clear: arr is NULL");
     arr->size = 0;
 }
 
-static void cvec_reserve(c_vector* arr, const size_t capacity) {
+static void cvec_reserve(c_vector_t* arr, const size_t capacity) {
     if (!arr) custom_die("cvec_reserve: arr is NULL");
     if (arr->element_size == 0) custom_die("cvec_reserve: element_size not initialized");
     if (capacity <= arr->capacity) return;
@@ -134,7 +215,7 @@ static void cvec_reserve(c_vector* arr, const size_t capacity) {
     arr->capacity = capacity;
 }
 
-static void cvec_reverse(c_vector* arr) {
+static void cvec_reverse(c_vector_t* arr) {
     if (!arr) custom_die("cvec_reverse: arr is NULL");
     if (arr->size <= 1) return;
     
@@ -160,12 +241,12 @@ static void cvec_reverse(c_vector* arr) {
 
 #define cvec(array) cvec_from_array((array), sizeof(array) / sizeof((array)[0]), sizeof((array)[0]))
 
-static c_vector cvec_from_array(const void* data, size_t count, size_t element_size) {
+static c_vector_t cvec_from_array(const void* data, size_t count, size_t element_size) {
     if (!data) custom_die("cvec_from_array: data is NULL");
     if (count == 0) custom_die("cvec_from_array: count must be > 0");
     if (element_size == 0) custom_die("cvec_from_array: element_size must be > 0");
 
-    c_vector arr;
+    c_vector_t arr;
     cvec_init(&arr, element_size);
     cvec_reserve(&arr, count);
     memcpy(arr.data, data, count * element_size);
@@ -173,7 +254,7 @@ static c_vector cvec_from_array(const void* data, size_t count, size_t element_s
     return arr;
 }
 
-static void* cvec_to_array(c_vector* arr) {
+static void* cvec_to_array(c_vector_t* arr) {
     if (!arr) custom_die("cvec_to_array: arr is NULL");
     if (arr->size == 0) custom_die("cvec_to_array: arr is empty");
 
@@ -187,7 +268,7 @@ static void* cvec_to_array(c_vector* arr) {
     return array;
 }
 
-static void cvec_shrink_to_fit(c_vector* arr) {
+static void cvec_shrink_to_fit(c_vector_t* arr) {
     if (!arr) custom_die("cvec_shrink_to_fit: arr is NULL");
     if (arr->size == arr->capacity) return;
 
@@ -204,7 +285,7 @@ static void cvec_shrink_to_fit(c_vector* arr) {
     arr->capacity = arr->size;
 }
 
-static void cvec_fill(c_vector* arr, const void* value) {
+static void cvec_fill(c_vector_t* arr, const void* value) {
     if (!arr) custom_die("cvec_fill: arr is NULL");
     if (!value) custom_die("cvec_fill: value is NULL");
     if (arr->element_size == 0) custom_die("cvec_fill: element_size must not be zero");
@@ -216,7 +297,7 @@ static void cvec_fill(c_vector* arr, const void* value) {
     }
 }
 
-static char* cvec_to_string(const c_vector* arr) {
+static char* cvec_to_string(const c_vector_t* arr) {
     if (!arr) custom_die("cvec_to_string: arr is NULL");
     
     if (arr->size == 0) {

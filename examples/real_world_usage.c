@@ -5,8 +5,8 @@
 #define C_VECTOR
 #include "../include/vector.h"
 
-// Example 1: Stack implementation using c_vector
-typedef c_vector Stack;
+// Example 1: Stack implementation using c_vector_t
+typedef c_vector_t Stack;
 
 void stack_init(Stack* s, size_t element_size) {
     cvec_init(s, element_size);
@@ -83,7 +83,7 @@ void print_entity(const Entity* e) {
 void demo_game_entities() {
     printf("=== Example 2: Game Entity Manager ===\n\n");
     
-    c_vector entities;
+    c_vector_t entities;
     cvec_init(&entities, sizeof(Entity));
     
     // Spawn entities
@@ -138,7 +138,7 @@ void demo_game_entities() {
 void demo_statistics() {
     printf("=== Example 3: Data Collection & Statistics ===\n\n");
     
-    c_vector numbers;
+    c_vector_t numbers;
     cvec_init(&numbers, sizeof(double));
     
     // Simulate reading data

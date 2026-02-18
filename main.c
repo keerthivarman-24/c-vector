@@ -1,11 +1,11 @@
-// Simple demonstration of c_vector library
+// Simple demonstration of c_vector_t library
 #include <stdio.h>
 
 #define C_VECTOR
 #include "include/vector.h"
 
 int main() {
-    c_vector vec;
+    c_vector_t vec;
     // Initialize vector for integers
     cvec_init(&vec, sizeof(int));
     // Add some elements
@@ -27,7 +27,7 @@ int main() {
     }
     printf("\n");
 
-    c_vector vec1;
+    c_vector_t vec1;
     cvec_init(&vec1, sizeof(int));
     cvec_reserve(&vec1, 10);
     cvec_fill(&vec1, &values[0]);

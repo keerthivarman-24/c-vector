@@ -1,11 +1,11 @@
-// Basic usage example for c_vector library
+// Basic usage example for c_vector_t library
 #include <stdio.h>
 
 #define C_VECTOR
 #include "../include/vector.h"
 
 int main() {
-    c_vector vec;
+    c_vector_t vec;
     
     // Initialize vector for integers
     cvec_init(&vec, sizeof(int));

@@ -132,7 +132,7 @@ done
 
 ### Pattern 1: Pre-allocation for Known Sizes
 ```c
-c_vector vec;
+c_vector_t vec;
 cvec_init(&vec, sizeof(int));
 cvec_reserve(&vec, 1000);  // If you know you'll add ~1000 elements
 

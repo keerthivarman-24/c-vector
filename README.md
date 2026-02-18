@@ -28,7 +28,7 @@ Simply include the header file in your project:
 #include "include/vector.h"
 
 int main() {
-    c_vector vec;
+    c_vector_t vec;
     
     // Initialize vector for integers
     cvec_init(&vec, sizeof(int));
@@ -60,14 +60,14 @@ typedef struct {
     size_t element_size;   // Size of each element in bytes
     size_t size;           // Current number of elements
     size_t capacity;       // Total allocated capacity
-} c_vector;
+} c_vector_t;
 ```
 
 ### Core Functions
 
 #### `cvec_init`
 ```c
-static void cvec_init(c_vector* arr, const size_t element_size)
+static void cvec_init(c_vector_t* arr, const size_t element_size)
 ```
 Initializes a new vector with the specified element size.
 
@@ -81,7 +81,7 @@ Initializes a new vector with the specified element size.
 
 #### `cvec_delete`
 ```c
-static void cvec_delete(c_vector* arr)
+static void cvec_delete(c_vector_t* arr)
 ```
 Frees all memory associated with the vector and resets its state. Safe to call multiple times.
 
@@ -93,7 +93,7 @@ Frees all memory associated with the vector and resets its state. Safe to call m
 
 #### `cvec_append`
 ```c
-static void cvec_append(c_vector* arr, const void* value)
+static void cvec_append(c_vector_t* arr, const void* value)
 ```
 Appends an element to the end of the vector. Automatically resizes if needed (1.5x growth).
 
@@ -111,7 +111,7 @@ Appends an element to the end of the vector. Automatically resizes if needed (1.
 
 #### `cvec_remove`
 ```c
-static void cvec_remove(c_vector* arr, const size_t index)
+static void cvec_remove(c_vector_t* arr, const size_t index)
 ```
 Removes element at the specified index. Shifts subsequent elements left.
 
@@ -125,7 +125,7 @@ Removes element at the specified index. Shifts subsequent elements left.
 
 #### `cvec_clear`
 ```c
-static void cvec_clear(c_vector* arr)
+static void cvec_clear(c_vector_t* arr)
 ```
 Resets the vector size to 0 without freeing memory. Keeps capacity unchanged.
 
@@ -137,7 +137,7 @@ Resets the vector size to 0 without freeing memory. Keeps capacity unchanged.
 
 #### `cvec_is_empty`
 ```c
-static bool cvec_is_empty(const c_vector* arr)
+static bool cvec_is_empty(const c_vector_t* arr)
 ```
 Checks if the vector is empty.
 
@@ -156,7 +156,7 @@ Checks if the vector is empty.
 
 #### `cvec_front`
 ```c
-static void* cvec_front(c_vector* arr)
+static void* cvec_front(c_vector_t* arr)
 ```
 Returns pointer to the first element in the vector.
 
@@ -174,7 +174,7 @@ Returns pointer to the first element in the vector.
 
 #### `cvec_back`
 ```c
-static void* cvec_back(c_vector* arr)
+static void* cvec_back(c_vector_t* arr)
 ```
 Returns pointer to the last element in the vector.
 
@@ -194,7 +194,7 @@ Returns pointer to the last element in the vector.
 
 #### `cvec_get`
 ```c
-static void* cvec_get(c_vector* arr, const size_t index)
+static void* cvec_get(c_vector_t* arr, const size_t index)
 ```
 Returns pointer to element at index with bounds checking. Safe for general use.
 
@@ -212,7 +212,7 @@ Returns pointer to element at index with bounds checking. Safe for general use.
 
 #### `cvec_set`
 ```c
-static void cvec_set(c_vector* arr, const size_t index, const void* value)
+static void cvec_set(c_vector_t* arr, const size_t index, const void* value)
 ```
 Sets element at index with bounds checking. Safe for modifying elements.
 
@@ -250,7 +250,7 @@ Fast, unchecked macro for element access. Use when performance is critical and b
 ```c
 #define cvec(array) cvec_from_array((array), sizeof(array) / sizeof((array)[0]), sizeof((array)[0]))
 
-static c_vector cvec_from_array(const void* data, size_t count, size_t element_size)
+static c_vector_t cvec_from_array(const void* data, size_t count, size_t element_size)
 ```
 Creates a new vector initialized with data from an existing array.
 
@@ -258,22 +258,22 @@ Creates a new vector initialized with data from an existing array.
   - `data` - Pointer to the array data
   - `count` - Number of elements in the array
   - `element_size` - Size of each element in bytes
-- **Returns:** A new `c_vector` initialized with the array data
+- **Returns:** A new `c_vector_t` initialized with the array data
 - **Time Complexity:** O(n)
 - **Example:** 
   ```c
   int arr[] = {10, 20, 30, 40, 50};
-  c_vector vec = cvec(arr);  // Using the convenient macro
+  c_vector_t vec = cvec(arr);  // Using the convenient macro
   
   // Manual usage:
-  c_vector vec2 = cvec_from_array(arr, 5, sizeof(int));
+  c_vector_t vec2 = cvec_from_array(arr, 5, sizeof(int));
   ```
 
 ---
 
 #### `cvec_reserve`
 ```c
-static void cvec_reserve(c_vector* arr, const size_t capacity)
+static void cvec_reserve(c_vector_t* arr, const size_t capacity)
 ```
 Pre-allocates memory for the specified capacity. Prevents multiple reallocations.
 
@@ -287,7 +287,7 @@ Pre-allocates memory for the specified capacity. Prevents multiple reallocations
 
 #### `cvec_to_array`
 ```c
-static void* cvec_to_array(c_vector* arr)
+static void* cvec_to_array(c_vector_t* arr)
 ```
 Creates a heap-allocated copy of the vector's data as a regular array.
 
@@ -306,7 +306,7 @@ Creates a heap-allocated copy of the vector's data as a regular array.
 
 #### `cvec_shrink_to_fit`
 ```c
-static void cvec_shrink_to_fit(c_vector* arr)
+static void cvec_shrink_to_fit(c_vector_t* arr)
 ```
 Reduces the vector's capacity to match its current size, freeing unused memory.
 
@@ -341,7 +341,7 @@ typedef struct {
     double score;
 } Student;
 
-c_vector students;
+c_vector_t students;
 cvec_init(&students, sizeof(Student));
 
 Student s1 = {1, "Alice", 95.5};
