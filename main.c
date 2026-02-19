@@ -1,4 +1,4 @@
-// Simple demonstration of c_vector_t library
+// Simple demonstration of c_vector library
 #include <stdio.h>
 
 #define C_VECTOR
@@ -28,16 +28,14 @@ int main() {
     printf("\n");
 
     c_vector_t vec1;
-    cvec_init(&vec1, sizeof(int));
-    cvec_reserve(&vec1, 10);
+    cvec_reserve(&vec1, 10, sizeof(int));
     cvec_fill(&vec1, &values[0]);
+    cvec_append(&vec1, &values[1]);
 
     for (size_t i = 0; i < vec1.size; i++) {
         printf("%d ", cvec_at(vec1, i, int));
     }
 
-    printf("\n");
-    printf(cvec_to_string(&vec));
     // Clean up
     cvec_delete(&vec);
     cvec_delete(&vec1);

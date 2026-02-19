@@ -7,7 +7,7 @@
 #include <string.h>
 
 // Error codes
-typedef enum {
+typedef enum : uint8_t {
     CVEC_OK = 0,
     CVEC_ERROR_NULL_POINTER,
     CVEC_ERROR_OUT_OF_BOUNDS,
@@ -38,59 +38,46 @@ typedef struct {
 typedef struct {
     bool success;
     union {
-        void* ptr;              
-        struct cvec_error error;  
+        void* ptr;
+        struct cvec_error error;
     } data;
 } cvec_vector_ptr;
 
 typedef struct {
     bool success;
     union {
-        c_vector_t vector; 
-        struct cvec_error error; 
+        c_vector_t vector;
+        struct cvec_error error;
     } data;
 } cvec_vector;
 
-static inline cvec_vector_ptr cvec_vector_ptr_error(cvec_error_code code, const char* msg) {
-    cvec_vector_ptr result;
-    result.success = false;
-    result.data.error.error_code = code;
-    result.data.error.error_msg = msg;
+static cvec_vector_ptr cvec_vector_ptr_error(const cvec_error_code code, const char* msg) {
+    cvec_vector_ptr result = { .success = false, .data.error = {code, msg} };
     return result;
 }
 
-static inline cvec_vector_ptr cvec_ptr_ok(void* ptr) {
-    cvec_vector_ptr result;
-    result.success = true;
-    result.data.ptr = ptr;
+static cvec_vector_ptr cvec_ptr_ok(void* ptr) {
+    cvec_vector_ptr result = { .success = true, .data.ptr = ptr };
     return result;
 }
 
-static inline cvec_vector cvec_vector_error(cvec_error_code code, const char* msg) {
-    cvec_vector result;
-    result.success = false;
-    result.data.error.error_code = code;
-    result.data.error.error_msg = msg;
+static cvec_vector cvec_vector_error(const cvec_error_code code, const char* msg) {
+    cvec_vector result = { .success = false, .data.error = {code, msg} };
     return result;
 }
 
-static inline cvec_vector cvec_vector_ok(c_vector_t vec) {
-    cvec_vector result;
-    result.success = true;
-    result.data.vector = vec;
+static cvec_vector cvec_vector_ok(const c_vector_t vec) {
+    cvec_vector result = { .success = true, .data.vector = vec };
     return result;
 }
 
-static inline cvec_result cvec_error(cvec_error_code code, const char* msg) {
-    cvec_result result;
-    result.success = false;
-    result.error.error_code = code;
-    result.error.error_msg = msg;
+static cvec_result cvec_error(const cvec_error_code code, const char* msg) {
+    cvec_result result = { .success = false, .error = {code, msg} };
     return result;
 }
 
-static inline cvec_result cvec_ok(void) {
-    cvec_result result = { .success = true, .error = {CVEC_OK, NULL} };
+static cvec_result cvec_ok(void) {
+    cvec_result result = { .success = true, .error = {CVEC_OK, nullptr} };
     return result;
 }
 
@@ -200,17 +187,21 @@ static void cvec_clear(c_vector_t* arr) {
     arr->size = 0;
 }
 
-static void cvec_reserve(c_vector_t* arr, const size_t capacity) {
+static void cvec_reserve(c_vector_t* arr, const size_t capacity, const size_t element_size) {
     if (!arr) custom_die("cvec_reserve: arr is NULL");
-    if (arr->element_size == 0) custom_die("cvec_reserve: element_size not initialized");
-    if (capacity <= arr->capacity) return;
-
+    // if (capacity <= arr->capacity) return;
     if (capacity > SIZE_MAX / arr->element_size) {
         custom_die("cvec_reserve: allocation size overflow");
     }
-
-    void *tmp = realloc(arr->data, arr->element_size * capacity);
-    if (!tmp) die("cvec_reserve: Failed to reallocate memory");
+    void *tmp = nullptr;
+    if (arr->element_size == 0) {
+        arr->element_size = element_size;
+        tmp = malloc(arr->element_size * capacity);
+        if (!tmp) die("cvec_reserve: Failed to allocate memory");
+    }else {
+        tmp = realloc(arr->data, arr->element_size * capacity);
+        if (!tmp) die("cvec_reserve: Failed to reallocate memory");
+    }
     arr->data = tmp;
     arr->capacity = capacity;
 }
@@ -241,14 +232,14 @@ static void cvec_reverse(c_vector_t* arr) {
 
 #define cvec(array) cvec_from_array((array), sizeof(array) / sizeof((array)[0]), sizeof((array)[0]))
 
-static c_vector_t cvec_from_array(const void* data, size_t count, size_t element_size) {
+static c_vector_t cvec_from_array(const void* data, const size_t count, const size_t element_size) {
     if (!data) custom_die("cvec_from_array: data is NULL");
     if (count == 0) custom_die("cvec_from_array: count must be > 0");
     if (element_size == 0) custom_die("cvec_from_array: element_size must be > 0");
 
     c_vector_t arr;
     cvec_init(&arr, element_size);
-    cvec_reserve(&arr, count);
+    cvec_reserve(&arr, count, element_size);
     memcpy(arr.data, data, count * element_size);
     arr.size = count;
     return arr;
@@ -297,6 +288,7 @@ static void cvec_fill(c_vector_t* arr, const void* value) {
     }
 }
 
+// TODO: Needs to works on proper display and enhance
 static char* cvec_to_string(const c_vector_t* arr) {
     if (!arr) custom_die("cvec_to_string: arr is NULL");
     
