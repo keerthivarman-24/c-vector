@@ -1,4 +1,4 @@
-// Example using custom struct types with c_vector
+// Example using custom struct types with c_vector_t
 #include <stdio.h>
 #include <string.h>
 
@@ -16,7 +16,7 @@ void print_student(const Student* s) {
 }
 
 int main() {
-    c_vector students;
+    c_vector_t students;
     
     // Initialize vector for Student structs
     cvec_init(&students, sizeof(Student));

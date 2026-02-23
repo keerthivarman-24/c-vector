@@ -6,14 +6,14 @@
 #include "../include/vector.h"
 
 int main() {
-    c_vector vec;
+    c_vector_t vec;
     
     printf("=== Advanced Operations Example ===\n\n");
     
     // Demonstrate cvec() macro - create vector from array
     printf("1. Creating vector from array using cvec() macro:\n");
     int source_array[] = {5, 10, 15, 20, 25, 30};
-    c_vector vec_from_array = cvec(source_array);
+    c_vector_t vec_from_array = cvec(source_array);
     
     printf("   Array elements copied to vector: ");
     for (size_t i = 0; i < vec_from_array.size; i++) {

@@ -10,7 +10,7 @@ int main() {
     
     // Integer vector
     printf("1. Integer Vector:\n");
-    c_vector int_vec;
+    c_vector_t int_vec;
     cvec_init(&int_vec, sizeof(int));
     
     int nums[] = {100, 200, 300, 400, 500};
@@ -26,7 +26,7 @@ int main() {
     
     // Character vector
     printf("2. Character Vector:\n");
-    c_vector char_vec;
+    c_vector_t char_vec;
     cvec_init(&char_vec, sizeof(char));
     
     char letters[] = {'H', 'e', 'l', 'l', 'o'};
@@ -42,7 +42,7 @@ int main() {
     
     // Float vector
     printf("3. Float Vector:\n");
-    c_vector float_vec;
+    c_vector_t float_vec;
     cvec_init(&float_vec, sizeof(float));
     
     float decimals[] = {3.14f, 2.71f, 1.41f, 1.73f};
@@ -58,7 +58,7 @@ int main() {
     
     // Pointer vector
     printf("4. Pointer Vector:\n");
-    c_vector ptr_vec;
+    c_vector_t ptr_vec;
     cvec_init(&ptr_vec, sizeof(char*));
     
     char* strings[] = {"Apple", "Banana", "Cherry", "Date"};
