@@ -383,6 +383,29 @@ static cvec_result cvec_fill(c_vector_t* arr, const void* value) {
     return cvec_ok();
 }
 
+static cvec_result cvec_insert(c_vector_t* arr, const size_t index, const void* value) {
+    if (!arr) return cvec_error(CVEC_ERROR_NULL_POINTER, "cvec_insert: arr is NULL");
+    if (!value) return cvec_error(CVEC_ERROR_NULL_POINTER, "cvec_insert: value is NULL");
+
+    if (arr->capacity == arr->size) {
+        arr->capacity = arr->capacity << 1;
+        void* tmp = realloc(arr->data, arr->element_size * arr->capacity);
+        if (!tmp) return cvec_error(CVEC_ERROR_ALLOCATION_FAILED, "cvec_insert: Failed to reallocate memory");
+
+        arr->data = tmp;
+    }
+    if (index < arr->size) {
+        memmove(
+            (uint8_t*)arr->data + ((index+1) * arr->element_size),
+            (uint8_t*)arr->data + (index * arr->element_size),
+            (arr->size - index) * arr->element_size);
+    }
+
+    memcpy((uint8_t*)arr->data + (index * arr->element_size), value, arr->element_size);
+    arr->size++;
+    return cvec_ok();
+}
+
 // TODO: Needs to works on proper display and enhance
 static cvec_vector_ptr cvec_to_string(const c_vector_t* arr) {
     fprintf(stdout, "Warning: cvec_to_string is not fully supported\n");

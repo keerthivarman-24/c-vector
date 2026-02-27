@@ -49,6 +49,7 @@ int main() {
 
     cvec_fill(&vec1, &values[0]);
     cvec_append(&vec1, &values[1]);
+    cvec_insert(&vec1, 2, &values[2]);
 
     for (size_t i = 0; i < vec1.size; i++) {
         printf("%d ", cvec_at(vec1, i, int));
