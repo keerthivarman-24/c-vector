@@ -40,7 +40,7 @@ int main() {
     cvec_append(&vec, &c);
     
     // Access elements
-    for (size_t i = 0; i < vec.size; i++) {
+    for (size_t i = 0; i < cvec_size(&vec); i++) {
         printf("vector[%zu] = %d\n", i, cvec_at(vec, i, int));
     }
     

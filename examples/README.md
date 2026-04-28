@@ -113,8 +113,8 @@ done
 | Function | Description |
 |----------|-------------|
 | `cvec_is_empty(&vec)` | Returns true if size is 0 |
-| `vec.size` | Current number of elements |
-| `vec.capacity` | Total allocated slots |
+| `cvec_size(&vec)` | Current number of elements |
+| `cvec_capacity(&vec)` | Total allocated slots |
 
 ### Memory Management
 | Function | Description |
@@ -143,7 +143,7 @@ for (int i = 0; i < 1000; i++) {
 
 ### Pattern 2: Safe Iteration
 ```c
-for (size_t i = 0; i < vec.size; i++) {
+for (size_t i = 0; i < cvec_size(&vec); i++) {
     int value = cvec_at(vec, i, int);
     // Use value...
 }
@@ -163,7 +163,7 @@ cvec_set(&vec, 5, &new_value);
 ### Pattern 4: Removing Elements in Loop
 ```c
 // Always iterate backwards when removing!
-for (int i = (int)vec.size - 1; i >= 0; i--) {
+for (int i = (int)cvec_size(&vec) - 1; i >= 0; i--) {
     if (should_remove(i)) {
         cvec_remove(&vec, i);
     }
