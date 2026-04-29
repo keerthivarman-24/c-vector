@@ -27,26 +27,36 @@ Simply include the header file in your project:
 #define C_VECTOR
 #include "include/vector.h"
 
-int main() {
-    c_vector_t vec;
-    
-    // Initialize vector for integers
-    cvec_init(&vec, sizeof(int));
-    
-    // Add elements
-    int a = 10, b = 20, c = 30;
-    cvec_append(&vec, &a);
-    cvec_append(&vec, &b);
-    cvec_append(&vec, &c);
-    
-    // Access elements
-    for (size_t i = 0; i < vec.size; i++) {
-        printf("vector[%zu] = %d\n", i, cvec_at(vec, i, int));
-    }
-    
-    // Clean up
-    cvec_delete(&vec);
-    return 0;
+int main(void) {
+  c_vector_t vec;
+
+  /* Initialize vector for integers (returns cvec_result) */
+  cvec_result init_res = cvec_init(&vec, sizeof(int));
+  if (!init_res.success) {
+    fprintf(stderr, "cvec_init failed: %s\n", init_res.error.message);
+    return 1;
+  }
+
+  /* Add elements (check each result) */
+  int a = 10, b = 20, c = 30;
+  cvec_result r = cvec_append(&vec, &a);
+  if (!r.success) { fprintf(stderr, "%s\n", r.error.message); cvec_delete(&vec); return 1; }
+  r = cvec_append(&vec, &b);
+  if (!r.success) { fprintf(stderr, "%s\n", r.error.message); cvec_delete(&vec); return 1; }
+  r = cvec_append(&vec, &c);
+  if (!r.success) { fprintf(stderr, "%s\n", r.error.message); cvec_delete(&vec); return 1; }
+
+  /* Access elements (use safe getter which returns a pointer result) */
+  for (size_t i = 0; i < cvec_size(&vec); i++) {
+    cvec_vector_ptr vptr = cvec_get(&vec, i);
+    if (!vptr.success) { fprintf(stderr, "%s\n", vptr.error.message); break; }
+    int value = *(int*)(vptr.data.ptr);
+    printf("vector[%zu] = %d\n", i, value);
+  }
+
+  /* Clean up */
+  cvec_delete(&vec);
+  return 0;
 }
 ```
 
@@ -66,10 +76,10 @@ typedef struct {
 ### Core Functions
 
 #### `cvec_init`
-```c
-static void cvec_init(c_vector_t* arr, const size_t element_size)
 ```
-Initializes a new vector with the specified element size.
+static cvec_result cvec_init(c_vector_t* arr, const size_t element_size)
+```
+Initializes a new vector with the specified element size. Returns a `cvec_result` with `success` or `error` information.
 
 - **Parameters:**
   - `arr` - Pointer to the vector to initialize
@@ -80,10 +90,10 @@ Initializes a new vector with the specified element size.
 ---
 
 #### `cvec_delete`
-```c
-static void cvec_delete(c_vector_t* arr)
 ```
-Frees all memory associated with the vector and resets its state. Safe to call multiple times.
+static cvec_result cvec_delete(c_vector_t* arr)
+```
+Frees all memory associated with the vector and resets its state. Returns `cvec_result` to indicate success or error (safe to call multiple times).
 
 - **Parameters:**
   - `arr` - Pointer to the vector to delete
@@ -92,10 +102,10 @@ Frees all memory associated with the vector and resets its state. Safe to call m
 ---
 
 #### `cvec_append`
-```c
-static void cvec_append(c_vector_t* arr, const void* value)
 ```
-Appends an element to the end of the vector. Automatically resizes if needed (1.5x growth).
+static cvec_result cvec_append(c_vector_t* arr, const void* value)
+```
+Appends an element to the end of the vector. Automatically resizes if needed (1.5x growth). Returns `cvec_result` and does not abort on failure.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -110,10 +120,10 @@ Appends an element to the end of the vector. Automatically resizes if needed (1.
 ---
 
 #### `cvec_remove`
-```c
-static void cvec_remove(c_vector_t* arr, const size_t index)
 ```
-Removes element at the specified index. Shifts subsequent elements left.
+static cvec_result cvec_remove(c_vector_t* arr, const size_t index)
+```
+Removes element at the specified index. Shifts subsequent elements left. Returns `cvec_result`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -124,10 +134,10 @@ Removes element at the specified index. Shifts subsequent elements left.
 ---
 
 #### `cvec_clear`
-```c
-static void cvec_clear(c_vector_t* arr)
 ```
-Resets the vector size to 0 without freeing memory. Keeps capacity unchanged.
+static cvec_result cvec_clear(c_vector_t* arr)
+```
+Resets the vector size to 0 without freeing memory. Keeps capacity unchanged. Returns `cvec_result`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -136,10 +146,10 @@ Resets the vector size to 0 without freeing memory. Keeps capacity unchanged.
 ---
 
 #### `cvec_is_empty`
-```c
+```
 static bool cvec_is_empty(const c_vector_t* arr)
 ```
-Checks if the vector is empty.
+Checks if the vector is empty. (This remains a simple boolean accessor.)
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -155,10 +165,10 @@ Checks if the vector is empty.
 ---
 
 #### `cvec_front`
-```c
-static void* cvec_front(c_vector_t* arr)
 ```
-Returns pointer to the first element in the vector.
+static cvec_vector_ptr cvec_front(c_vector_t* arr)
+```
+Returns a `cvec_vector_ptr` result containing a pointer to the first element or an error if the vector is empty or invalid.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -173,10 +183,10 @@ Returns pointer to the first element in the vector.
 ---
 
 #### `cvec_back`
-```c
-static void* cvec_back(c_vector_t* arr)
 ```
-Returns pointer to the last element in the vector.
+static cvec_vector_ptr cvec_back(c_vector_t* arr)
+```
+Returns a `cvec_vector_ptr` result containing a pointer to the last element or an error if the vector is empty or invalid.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -193,10 +203,10 @@ Returns pointer to the last element in the vector.
 ### Safe Access Functions
 
 #### `cvec_get`
-```c
-static void* cvec_get(c_vector_t* arr, const size_t index)
 ```
-Returns pointer to element at index with bounds checking. Safe for general use.
+static cvec_vector_ptr cvec_get(c_vector_t* arr, const size_t index)
+```
+Returns a `cvec_vector_ptr` result containing a pointer to the element at `index` with bounds checking. Check `result.success` before using `result.data.ptr`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -211,10 +221,10 @@ Returns pointer to element at index with bounds checking. Safe for general use.
 ---
 
 #### `cvec_set`
-```c
-static void cvec_set(c_vector_t* arr, const size_t index, const void* value)
 ```
-Sets element at index with bounds checking. Safe for modifying elements.
+static cvec_result cvec_set(c_vector_t* arr, const size_t index, const void* value)
+```
+Sets element at index with bounds checking. Returns `cvec_result`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -229,10 +239,10 @@ Sets element at index with bounds checking. Safe for modifying elements.
 ---
 
 #### `cvec_at` (Macro)
-```c
+```
 #define cvec_at(arr, index, type)
 ```
-Fast, unchecked macro for element access. Use when performance is critical and bounds are verified.
+Fast, unchecked macro for element access. Use when performance is critical and bounds are verified. This macro remains unchecked and is intended for hot paths where you have already validated the index.
 
 - **Parameters:**
   - `arr` - The vector (passed by value, not pointer)
@@ -272,10 +282,10 @@ Creates a new vector initialized with data from an existing array.
 ---
 
 #### `cvec_reserve`
-```c
-static void cvec_reserve(c_vector_t* arr, const size_t capacity)
 ```
-Pre-allocates memory for the specified capacity. Prevents multiple reallocations.
+static cvec_result cvec_reserve(c_vector_t* arr, const size_t capacity)
+```
+Pre-allocates memory for the specified capacity. Prevents multiple reallocations. Returns `cvec_result`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -286,10 +296,10 @@ Pre-allocates memory for the specified capacity. Prevents multiple reallocations
 ---
 
 #### `cvec_to_array`
-```c
-static void* cvec_to_array(c_vector_t* arr)
 ```
-Creates a heap-allocated copy of the vector's data as a regular array.
+static cvec_ptr_result cvec_to_array(c_vector_t* arr)
+```
+Creates a heap-allocated copy of the vector's data as a regular array. Returns a pointer result; caller must check and free returned pointer on success.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -305,10 +315,10 @@ Creates a heap-allocated copy of the vector's data as a regular array.
 ---
 
 #### `cvec_shrink_to_fit`
-```c
-static void cvec_shrink_to_fit(c_vector_t* arr)
 ```
-Reduces the vector's capacity to match its current size, freeing unused memory.
+static cvec_result cvec_shrink_to_fit(c_vector_t* arr)
+```
+Reduces the vector's capacity to match its current size, freeing unused memory. Returns `cvec_result`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector

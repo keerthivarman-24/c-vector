@@ -90,8 +90,8 @@ done
 ### Initialization & Cleanup
 | Function | Description |
 |----------|-------------|
-| `cvec_init(&vec, sizeof(type))` | Initialize vector for specific type |
-| `cvec_delete(&vec)` | Free all memory and reset |
+| `cvec_result cvec_init(&vec, sizeof(type))` | Initialize vector for specific type; returns `cvec_result` — check `result.success` before using the vector |
+| `cvec_result cvec_delete(&vec)` | Free all memory and reset; returns `cvec_result` |
 
 ### Adding/Removing Elements
 | Function | Description |
@@ -113,8 +113,8 @@ done
 | Function | Description |
 |----------|-------------|
 | `cvec_is_empty(&vec)` | Returns true if size is 0 |
-| `vec.size` | Current number of elements |
-| `vec.capacity` | Total allocated slots |
+| `cvec_size(&vec)` | Current number of elements |
+| `cvec_capacity(&vec)` | Total allocated slots |
 
 ### Memory Management
 | Function | Description |
@@ -143,7 +143,7 @@ for (int i = 0; i < 1000; i++) {
 
 ### Pattern 2: Safe Iteration
 ```c
-for (size_t i = 0; i < vec.size; i++) {
+for (size_t i = 0; i < cvec_size(&vec); i++) {
     int value = cvec_at(vec, i, int);
     // Use value...
 }
@@ -163,7 +163,7 @@ cvec_set(&vec, 5, &new_value);
 ### Pattern 4: Removing Elements in Loop
 ```c
 // Always iterate backwards when removing!
-for (int i = (int)vec.size - 1; i >= 0; i--) {
+for (int i = (int)cvec_size(&vec) - 1; i >= 0; i--) {
     if (should_remove(i)) {
         cvec_remove(&vec, i);
     }
@@ -181,15 +181,24 @@ for (int i = (int)vec.size - 1; i >= 0; i--) {
 
 ## Error Handling
 
-All functions perform safety checks and will terminate with error messages if:
-- NULL pointers are passed
-- Index out of bounds
-- Memory allocation fails
-- Size overflow detected
+The library no longer aborts on error. Most operations return a result structure (e.g., `cvec_result`, `cvec_vector_ptr`, `cvec_ptr_result`) that contains a `success` boolean and an `error` payload when `success` is false. Callers should check `result.success` and handle `result.error` (code/message) appropriately.
 
-Example error output:
-```
-cvec_get: index is out of range
+Common failure reasons:
+- NULL pointer arguments
+- Index out of bounds
+- Allocation failures
+- Size/overflow errors
+
+Example usage pattern:
+```c
+// init
+cvec_result r = cvec_init(&vec, sizeof(int));
+if (!r.success) { fprintf(stderr, "init failed: %s\n", r.error.message); return 1; }
+
+// get element
+cvec_vector_ptr p = cvec_get(&vec, 0);
+if (!p.success) { fprintf(stderr, "get failed: %s\n", p.error.message); }
+else { int v = *(int*)p.data.ptr; }
 ```
 
 ## Next Steps

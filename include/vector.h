@@ -17,11 +17,9 @@ typedef enum : uint8_t {
     CVEC_ERROR_EMPTY_VECTOR,
     CVEC_ERROR_NOT_INITIALIZED,
     CVEC_ERROR_NOT_FOUND,
-    CVEC_ERROR_NOT_SUPPORTED,
     CVEC_ERROR_INVALID_INDEX,
     CVEC_ERROR_INVALID_VALUE,
     CVEC_ERROR_INVALID_OPERATION,
-    CVEC_ERROR_DUE_TO_PREVIOUS_OPERATION
 } cvec_error_code;
 
 typedef struct {
@@ -50,11 +48,9 @@ static inline const char* cvec_error_message(const cvec_error_code code) {
         case CVEC_ERROR_EMPTY_VECTOR: return "empty vector";
         case CVEC_ERROR_NOT_INITIALIZED: return "not initialized";
         case CVEC_ERROR_NOT_FOUND: return "not found";
-        case CVEC_ERROR_NOT_SUPPORTED: return "not supported";
         case CVEC_ERROR_INVALID_INDEX: return "invalid index";
         case CVEC_ERROR_INVALID_VALUE: return "invalid value";
         case CVEC_ERROR_INVALID_OPERATION: return "invalid operation";
-        case CVEC_ERROR_DUE_TO_PREVIOUS_OPERATION: return "due to previous operation";
         default: return "unknown error";
     }
 }
@@ -79,8 +75,16 @@ static inline cvec_error_code cvec__bytes_for(const size_t count, const size_t e
 static inline cvec_error_code cvec_init(c_vector_t* vec, const size_t element_size) {
     if (!vec) return CVEC_ERROR_NULL_POINTER;
     if (element_size == 0) return CVEC_ERROR_INVALID_SIZE;
-
-    void* data = malloc(element_size * CVEC_INITIAL_CAPACITY);
+    size_t bytes = 0;
+    cvec_error_code status = cvec__bytes_for(CVEC_INITIAL_CAPACITY, element_size, &bytes);
+    if (status != CVEC_OK) {
+        vec->data = nullptr;
+        vec->capacity = 0;
+        vec->size = 0;
+        vec->element_size = 0;
+        return status;
+    }
+    void* data = malloc(bytes);
     if (!data) {
         vec->data = nullptr;
         vec->capacity = 0;
@@ -93,7 +97,6 @@ static inline cvec_error_code cvec_init(c_vector_t* vec, const size_t element_si
     vec->element_size = element_size;
     vec->size = 0;
     vec->capacity = CVEC_INITIAL_CAPACITY;
-
 
     return CVEC_OK;
 }
@@ -111,6 +114,14 @@ static inline cvec_error_code cvec_clear(c_vector_t* vec) {
     if (!vec) return CVEC_ERROR_NULL_POINTER;
     vec->size = 0;
     return CVEC_OK;
+}
+
+static inline size_t cvec_size(const c_vector_t* vec) {
+    return (vec) ? vec->size : 0;
+}
+
+static inline size_t cvec_capacity(const c_vector_t* vec) {
+    return (vec) ? vec->capacity : 0;
 }
 
 static inline cvec_error_code cvec_reserve(c_vector_t* vec, const size_t new_capacity) {
@@ -272,6 +283,15 @@ static inline cvec_error_code cvec_remove(c_vector_t* vec, const size_t index) {
     return CVEC_OK;
 }
 
+static inline cvec_error_code cvec_pop(c_vector_t* vec, void* value) {
+    if (!vec || !value) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size == 0) return CVEC_ERROR_EMPTY_VECTOR;
+
+    memcpy(value, (uint8_t*)vec->data + (vec->size - 1) * vec->element_size, vec->element_size);
+    vec->size--;
+    return CVEC_OK;
+}
+
 static inline cvec_error_code cvec_fill(c_vector_t* vec, const void* value, const size_t count) {
     cvec_error_code status = CVEC_OK;
     size_t i = 0;
@@ -281,7 +301,13 @@ static inline cvec_error_code cvec_fill(c_vector_t* vec, const void* value, cons
 
     status = cvec__ensure_capacity(vec, count);
     if (status != CVEC_OK) return status;
-
+    
+    if (vec->element_size == 1) {
+        memset(vec->data, *(const uint8_t*)value, count);
+        vec->size = count;
+        return CVEC_OK;
+    }
+    
     for (i = 0; i < count; ++i) {
         memcpy((uint8_t*)vec->data + (i * vec->element_size), value, vec->element_size);
     }
@@ -329,11 +355,7 @@ static inline cvec_error_code cvec_from_array(
 
     if (!out_vec || !data) return CVEC_ERROR_NULL_POINTER;
     if (count == 0 || element_size == 0) return CVEC_ERROR_INVALID_SIZE;
-    
-    out_vec->data = nullptr;
-    out_vec->capacity = 0;
-    out_vec->size = 0;
-    out_vec->element_size = element_size;
+    if (out_vec->data != nullptr) cvec_delete(out_vec);
 
     status = cvec_reserve(out_vec, count);
     if (status != CVEC_OK) {
@@ -348,6 +370,7 @@ static inline cvec_error_code cvec_from_array(
 
     memcpy(out_vec->data, data, bytes);
     out_vec->size = count;
+    out_vec->element_size = element_size;
     return CVEC_OK;
 }
 
@@ -368,6 +391,33 @@ static inline cvec_error_code cvec_to_array(const c_vector_t* vec, void** out_ar
 
     memcpy(copy, vec->data, bytes);
     *out_array = copy;
+    return CVEC_OK;
+}
+
+static inline cvec_error_code cvec_copy(c_vector_t *src, c_vector_t* dst) {
+    cvec_error_code status = CVEC_OK;
+    if (!src || !dst) return CVEC_ERROR_NULL_POINTER;
+    if (src->size == 0) {
+        dst->data = nullptr;
+        dst->size = 0;
+        dst->capacity = 0;
+        dst->element_size = src->element_size; 
+        return CVEC_OK;
+    }
+    if (src == dst) return CVEC_OK;
+
+    size_t bytes = 0;
+    status = cvec__bytes_for(src->size, src->element_size, &bytes);
+    if (status != CVEC_OK) return status;
+    if (dst->data != nullptr) free(dst->data);
+
+    dst->data = malloc(bytes);
+    if (!dst->data) return CVEC_ERROR_ALLOCATION_FAILED;
+    memcpy(dst->data, src->data, bytes);
+    dst->size = src->size;
+    dst->capacity = src->capacity;
+    dst->element_size = src->element_size;
+
     return CVEC_OK;
 }
 

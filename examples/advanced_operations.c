@@ -47,7 +47,7 @@ int main() {
         cvec_delete(&vec);
         return 1;
     }
-    printf("   After reserve - Size: %zu, Capacity: %zu\n\n", vec.size, vec.capacity);
+    printf("   After reserve - Size: %zu, Capacity: %zu\n\n", cvec_size(&vec), cvec_capacity(&vec));
     
     // Add elements
     printf("3. Adding 10 elements\n");
@@ -60,7 +60,7 @@ int main() {
             return 1;
         }
     }
-    printf("   After append - Size: %zu, Capacity: %zu\n", vec.size, vec.capacity);
+    printf("   After append - Size: %zu, Capacity: %zu\n", cvec_size(&vec), cvec_capacity(&vec));
     printf("   Notice: No reallocation needed due to reserve!\n\n");
     
     // Safe element access with cvec_get
@@ -81,7 +81,7 @@ int main() {
     
     // Modify elements using cvec_set
     printf("5. Doubling all values using cvec_set\n");
-    for (size_t i = 0; i < vec.size; i++) {
+    for (size_t i = 0; i < cvec_size(&vec); i++) {
         void* ptr = nullptr;
         status = cvec_get(&vec, i, &ptr);
         if (status != CVEC_OK) {
@@ -100,7 +100,7 @@ int main() {
     }
     
     printf("   After doubling: ");
-    for (size_t i = 0; i < vec.size; i++) {
+    for (size_t i = 0; i < cvec_size(&vec); i++) {
         double value = 0;
         status = cvec_at(&vec, i, &value);
         if (status != CVEC_OK) {
@@ -115,15 +115,15 @@ int main() {
     
     // Shrink to fit - reduce capacity to match size
     printf("6. Shrinking capacity to fit size\n");
-    printf("   Before shrink - Size: %zu, Capacity: %zu\n", vec.size, vec.capacity);
+    printf("   Before shrink - Size: %zu, Capacity: %zu\n", cvec_size(&vec), cvec_capacity(&vec));
     status = cvec_shrink_to_fit(&vec);
     if (status != CVEC_OK) {
         fprintf(stderr, "shrink failed: %s\n", cvec_error_message(status));
         cvec_delete(&vec);
         return 1;
     }
-    printf("   After shrink  - Size: %zu, Capacity: %zu\n", vec.size, vec.capacity);
-    printf("   Freed %zu slots of unused capacity!\n\n", 100 - vec.size);
+    printf("   After shrink  - Size: %zu, Capacity: %zu\n", cvec_size(&vec), cvec_capacity(&vec));
+    printf("   Freed %zu slots of unused capacity!\n\n", 100 - cvec_size(&vec));
     
     // Convert to regular array
     printf("7. Converting vector to regular array\n");

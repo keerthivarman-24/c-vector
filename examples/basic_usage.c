@@ -15,7 +15,7 @@ int main() {
     
     // Check if empty
     printf("Is vector empty? %s\n", cvec_is_empty(&vec) ? "Yes" : "No");
-    printf("Initial - Size: %zu, Capacity: %zu\n\n", vec.size, vec.capacity);
+    printf("Initial - Size: %zu, Capacity: %zu\n\n", cvec_size(&vec), cvec_capacity(&vec));
     
     // Add elements
     printf("Adding elements: 10, 20, 30, 40, 50\n");
@@ -24,7 +24,7 @@ int main() {
     
     // Display all elements
     printf("Vector contents: ");
-    for (size_t i = 0; i < vec.size; i++) {
+    for (size_t i = 0; i < cvec_size(&vec); i++) {
         int value = 0;
         status = cvec_at(&vec, i, &value);
         if (status != CVEC_OK) {
@@ -35,7 +35,7 @@ int main() {
         printf("%d ", value);
     }
     printf("\n");
-    printf("Size: %zu, Capacity: %zu\n", vec.size, vec.capacity);
+    printf("Size: %zu, Capacity: %zu\n", cvec_size(&vec), cvec_capacity(&vec));
     printf("Is empty now? %s\n\n", cvec_is_empty(&vec) ? "Yes" : "No");
     
     // Access front and back
@@ -66,7 +66,7 @@ int main() {
     }
     
     printf("Vector after removal: ");
-    for (size_t i = 0; i < vec.size; i++) {
+    for (size_t i = 0; i < cvec_size(&vec); i++) {
         int value = 0;
         status = cvec_at(&vec, i, &value);
         if (status != CVEC_OK) {
@@ -77,12 +77,12 @@ int main() {
         printf("%d ", value);
     }
     printf("\n");
-    printf("Size: %zu, Capacity: %zu\n\n", vec.size, vec.capacity);
+    printf("Size: %zu, Capacity: %zu\n\n", cvec_size(&vec), cvec_capacity(&vec));
     
     // Clear the vector
     printf("Clearing vector\n");
     cvec_clear(&vec);
-    printf("Size after clear: %zu, Capacity: %zu\n", vec.size, vec.capacity);
+    printf("Size after clear: %zu, Capacity: %zu\n", cvec_size(&vec), cvec_capacity(&vec));
     printf("Is empty after clear? %s\n\n", cvec_is_empty(&vec) ? "Yes" : "No");
     
     // Cleanup

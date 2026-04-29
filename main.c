@@ -24,7 +24,7 @@ int main() {
 
     // Display elements
     printf("Vector contents: ");
-    for (size_t i = 0; i < vec.size; i++) {
+    for (size_t i = 0; i < cvec_size(&vec); i++) {
         int value = 0;
         status = cvec_at(&vec, i, &value);
         if (status != CVEC_OK) {
@@ -44,7 +44,7 @@ int main() {
         return 1;
     }
 
-    for (size_t i = 0; i < vec.size; i++) {
+    for (size_t i = 0; i < cvec_size(&vec); i++) {
         int value = 0;
         status = cvec_at(&vec, i, &value);
         if (status != CVEC_OK) {
@@ -96,7 +96,7 @@ int main() {
         return 1;
     }
 
-    for (size_t i = 0; i < vec1.size; i++) {
+    for (size_t i = 0; i < cvec_size(&vec1); i++) {
         int t = 0;
         status = cvec_at(&vec1, i, &t);
         if (status != CVEC_OK) {
