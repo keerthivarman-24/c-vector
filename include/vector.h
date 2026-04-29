@@ -17,11 +17,9 @@ typedef enum : uint8_t {
     CVEC_ERROR_EMPTY_VECTOR,
     CVEC_ERROR_NOT_INITIALIZED,
     CVEC_ERROR_NOT_FOUND,
-    CVEC_ERROR_NOT_SUPPORTED,
     CVEC_ERROR_INVALID_INDEX,
     CVEC_ERROR_INVALID_VALUE,
     CVEC_ERROR_INVALID_OPERATION,
-    CVEC_ERROR_DUE_TO_PREVIOUS_OPERATION
 } cvec_error_code;
 
 typedef struct {
@@ -50,11 +48,9 @@ static inline const char* cvec_error_message(const cvec_error_code code) {
         case CVEC_ERROR_EMPTY_VECTOR: return "empty vector";
         case CVEC_ERROR_NOT_INITIALIZED: return "not initialized";
         case CVEC_ERROR_NOT_FOUND: return "not found";
-        case CVEC_ERROR_NOT_SUPPORTED: return "not supported";
         case CVEC_ERROR_INVALID_INDEX: return "invalid index";
         case CVEC_ERROR_INVALID_VALUE: return "invalid value";
         case CVEC_ERROR_INVALID_OPERATION: return "invalid operation";
-        case CVEC_ERROR_DUE_TO_PREVIOUS_OPERATION: return "due to previous operation";
         default: return "unknown error";
     }
 }
@@ -101,7 +97,6 @@ static inline cvec_error_code cvec_init(c_vector_t* vec, const size_t element_si
     vec->element_size = element_size;
     vec->size = 0;
     vec->capacity = CVEC_INITIAL_CAPACITY;
-
 
     return CVEC_OK;
 }

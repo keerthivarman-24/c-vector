@@ -26,6 +26,6 @@ add_executable(c_vector_examples_real_world_usage
         examples/real_world_usage.c
 )
 
-add_executable(c_vector_examples_test 
-        examples/comprehensive_test.c
+add_executable(c_vector_test
+        tests/comprehensive_test.c
 )
