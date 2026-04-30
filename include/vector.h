@@ -190,6 +190,53 @@ static inline cvec_error_code cvec_shrink_to_fit(c_vector_t* vec) {
     return CVEC_OK;
 }
 
+static inline cvec_error_code cvec_resize(c_vector_t* vec, const size_t new_size, const void* default_value) {
+    if (!vec) return CVEC_ERROR_NULL_POINTER;
+    if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
+    if (new_size == vec->size) return CVEC_OK;
+
+    if (new_size < vec->size) {
+        vec->size = new_size;
+        return CVEC_OK;
+    }
+    cvec_error_code status = CVEC_OK;
+    if (new_size > vec->capacity) {
+        status = cvec_reserve(vec, new_size);
+        if (status != CVEC_OK) return status;
+    }
+
+    if (default_value) {
+        size_t num_new = new_size - vec->size;
+
+        if (vec->element_size == 1) {
+            size_t offset = 0;
+            if (cvec__mul_overflow(vec->size, vec->element_size, &offset)) {
+                return CVEC_ERROR_OVERFLOW;
+            }
+            memset((uint8_t*)vec->data + offset, 
+                   *(const uint8_t*)default_value, num_new);
+        } else if (*(const uint8_t*)default_value == 0) {
+            size_t offset = 0;
+            if (cvec__mul_overflow(vec->size, vec->element_size, &offset)) {
+                return CVEC_ERROR_OVERFLOW;
+            }
+            memset((uint8_t*)vec->data + offset, 0, num_new * vec->element_size);
+        } else {
+            for (size_t i = vec->size; i < new_size; ++i) {
+                size_t loop_offset = 0;
+                if (cvec__mul_overflow(i, vec->element_size, &loop_offset)) {
+                    return CVEC_ERROR_OVERFLOW;
+                }
+                memcpy((uint8_t*)vec->data + loop_offset, 
+                       default_value, vec->element_size);
+            }
+        }
+    }
+
+    vec->size = new_size;
+    return CVEC_OK;
+}
+
 static inline cvec_error_code cvec_get(c_vector_t* vec, const size_t index, void** out_ptr) {
     if (!vec || !out_ptr) return CVEC_ERROR_NULL_POINTER;
     if (index >= vec->size) return CVEC_ERROR_OUT_OF_BOUNDS;

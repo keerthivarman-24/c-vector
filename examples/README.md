@@ -125,7 +125,6 @@ done
 ### Array Conversion
 | Function | Description |
 |----------|-------------|
-| `cvec(array)` | Create vector from C array |
 | `cvec_to_array(&vec)` | Convert to C array (caller must free) |
 
 ## Common Patterns
