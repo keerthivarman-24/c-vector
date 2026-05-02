@@ -63,3 +63,4 @@ dkms.conf
 .idea/modules.xml
 .idea/vcs.xml
 tests/comprehensive_test.c
+/tests/test.c
