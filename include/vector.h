@@ -56,40 +56,66 @@ static inline const char* cvec_error_message(const cvec_error_code code) {
 }
 
 static inline bool cvec_is_empty(const c_vector_t* vec) {
-    return (vec == nullptr) || (vec->size == 0);
+    return (!vec) || (vec->size == 0);
 }
 
-static inline bool cvec__mul_overflow(const size_t a, const size_t b, size_t* out) {
+static inline bool __cvec_mul_overflow(const size_t a, const size_t b, size_t* out) {
     if (!out) return true;
     if (a != 0 && b > SIZE_MAX / a) return true;
     *out = a * b;
     return false;
 }
 
-static inline cvec_error_code cvec__bytes_for(const size_t count, const size_t elem_size, size_t* out_bytes) {
+static inline cvec_error_code __cvec_bytes_for(const size_t count, const size_t elem_size, size_t* out_bytes) {
     if (elem_size == 0) return CVEC_ERROR_INVALID_SIZE;
-    if (cvec__mul_overflow(count, elem_size, out_bytes)) return CVEC_ERROR_OVERFLOW;
+    if (__cvec_mul_overflow(count, elem_size, out_bytes)) return CVEC_ERROR_OVERFLOW;
     return CVEC_OK;
+}
+
+static inline cvec_error_code __cvec_ensure_capacity(c_vector_t* vec, const size_t min_capacity) {
+    size_t cap = 0;
+
+    if (!vec) return CVEC_ERROR_NULL_POINTER;
+    if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
+    if (vec->capacity >= min_capacity) return CVEC_OK;
+
+    cap = (vec->capacity == 0) ? CVEC_INITIAL_CAPACITY : vec->capacity;
+    while (cap < min_capacity) {
+        if (cap > SIZE_MAX - (cap >> 1)) {
+            return CVEC_ERROR_OVERFLOW;
+        }
+        size_t next = cap + (cap >> 1);
+        cap = next;
+    }
+
+    return cvec_reserve(vec, cap);
+}
+
+static inline bool __cvec_is_all_zero(const void* value, size_t size) {
+
+    static const uint8_t zero_block[256] = {0};
+    if (size <= 256) return memcmp(value, zero_block, size) == 0;
+
+    const uint8_t* p = (const uint8_t*)value;
+    for (size_t i = 0; i < size; i++) {
+        if (p[i] != 0) return false;
+    }
+    return true;
+
 }
 
 static inline cvec_error_code cvec_init(c_vector_t* vec, const size_t element_size) {
     if (!vec) return CVEC_ERROR_NULL_POINTER;
     if (element_size == 0) return CVEC_ERROR_INVALID_SIZE;
     size_t bytes = 0;
-    cvec_error_code status = cvec__bytes_for(CVEC_INITIAL_CAPACITY, element_size, &bytes);
+    cvec_error_code status = __cvec_bytes_for(CVEC_INITIAL_CAPACITY, element_size, &bytes);
     if (status != CVEC_OK) {
-        vec->data = nullptr;
-        vec->capacity = 0;
-        vec->size = 0;
-        vec->element_size = 0;
+        cvec_delete(vec);
         return status;
     }
     void* data = malloc(bytes);
     if (!data) {
-        vec->data = nullptr;
-        vec->capacity = 0;
-        vec->size = 0;
-        vec->element_size = 0;
+        cvec_delete(vec);
         return CVEC_ERROR_ALLOCATION_FAILED;
     }
 
@@ -131,7 +157,7 @@ static inline cvec_error_code cvec_reserve(c_vector_t* vec, const size_t new_cap
     if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
     if (new_capacity <= vec->capacity) return CVEC_OK;
 
-    if (cvec__bytes_for(new_capacity, vec->element_size, &bytes) != CVEC_OK) {
+    if (__cvec_bytes_for(new_capacity, vec->element_size, &bytes) != CVEC_OK) {
         return CVEC_ERROR_OVERFLOW;
     }
 
@@ -141,25 +167,6 @@ static inline cvec_error_code cvec_reserve(c_vector_t* vec, const size_t new_cap
     vec->data = new_data;
     vec->capacity = new_capacity;
     return CVEC_OK;
-}
-
-static inline cvec_error_code cvec__ensure_capacity(c_vector_t* vec, const size_t min_capacity) {
-    size_t cap = 0;
-    size_t grow = 0;
-
-    if (!vec) return CVEC_ERROR_NULL_POINTER;
-    if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
-    if (vec->capacity >= min_capacity) return CVEC_OK;
-
-    cap = (vec->capacity == 0) ? CVEC_INITIAL_CAPACITY : vec->capacity;
-    while (cap < min_capacity) {
-        grow = cap / 2;
-        if (grow == 0) grow = 1;
-        if (cap > SIZE_MAX - grow) return CVEC_ERROR_OVERFLOW;
-        cap += grow;
-    }
-
-    return cvec_reserve(vec, cap);
 }
 
 static inline cvec_error_code cvec_shrink_to_fit(c_vector_t* vec) {
@@ -178,7 +185,7 @@ static inline cvec_error_code cvec_shrink_to_fit(c_vector_t* vec) {
 
     if (vec->size == vec->capacity) return CVEC_OK;
 
-    if (cvec__bytes_for(vec->size, vec->element_size, &bytes) != CVEC_OK) {
+    if (__cvec_bytes_for(vec->size, vec->element_size, &bytes) != CVEC_OK) {
         return CVEC_ERROR_OVERFLOW;
     }
 
@@ -190,19 +197,76 @@ static inline cvec_error_code cvec_shrink_to_fit(c_vector_t* vec) {
     return CVEC_OK;
 }
 
+static inline cvec_error_code cvec_resize(c_vector_t* vec, const size_t new_size, const void* default_value) {
+    if (!vec) return CVEC_ERROR_NULL_POINTER;
+    if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
+    if (new_size == vec->size) return CVEC_OK;
+
+    if (new_size < vec->size) {
+        vec->size = new_size;
+        return CVEC_OK;
+    }
+    cvec_error_code status = CVEC_OK;
+    if (new_size > vec->capacity) {
+        status = cvec_reserve(vec, new_size);
+        if (status != CVEC_OK) return status;
+    }
+
+    if (default_value) {
+        size_t num_new = new_size - vec->size;
+
+        if (vec->element_size == 1) {
+            size_t offset = 0;
+            if (__cvec_mul_overflow(vec->size, vec->element_size, &offset)) {
+                return CVEC_ERROR_OVERFLOW;
+            }
+            memset((uint8_t*)vec->data + offset, 
+                   *(const uint8_t*)default_value, num_new);
+        } else if (__cvec_is_all_zero(default_value, vec->element_size)) {
+            size_t offset = 0;
+            if (__cvec_mul_overflow(vec->size, vec->element_size, &offset)) {
+                return CVEC_ERROR_OVERFLOW;
+            }
+            memset((uint8_t*)vec->data + offset, 0, num_new * vec->element_size);
+        } else {
+            for (size_t i = vec->size; i < new_size; ++i) {
+                size_t loop_offset = 0;
+                if (__cvec_mul_overflow(i, vec->element_size, &loop_offset)) {
+                    return CVEC_ERROR_OVERFLOW;
+                }
+                memcpy((uint8_t*)vec->data + loop_offset, 
+                       default_value, vec->element_size);
+            }
+        }
+    }
+
+    vec->size = new_size;
+    return CVEC_OK;
+}
+
 static inline cvec_error_code cvec_get(c_vector_t* vec, const size_t index, void** out_ptr) {
     if (!vec || !out_ptr) return CVEC_ERROR_NULL_POINTER;
     if (index >= vec->size) return CVEC_ERROR_OUT_OF_BOUNDS;
+    
+    size_t offset = 0;
+    if (__cvec_mul_overflow(index, vec->element_size, &offset)) {
+        return CVEC_ERROR_OVERFLOW;
+    }
 
-    *out_ptr = (uint8_t*)vec->data + (index * vec->element_size);
+    *out_ptr = (uint8_t*)vec->data + offset;
     return CVEC_OK;
 }
 
 static inline cvec_error_code cvec_get_const(const c_vector_t* vec, const size_t index, const void** out_ptr) {
     if (!vec || !out_ptr) return CVEC_ERROR_NULL_POINTER;
     if (index >= vec->size) return CVEC_ERROR_OUT_OF_BOUNDS;
+    
+    size_t offset = 0;
+    if (__cvec_mul_overflow(index, vec->element_size, &offset)) {
+        return CVEC_ERROR_OVERFLOW;
+    }
     const uint8_t* base = (const uint8_t*)vec->data;
-    *out_ptr = base + (index * vec->element_size);
+    *out_ptr = base + offset;
     return CVEC_OK;
 }
 
@@ -210,7 +274,12 @@ static inline cvec_error_code cvec_set(c_vector_t* vec, const size_t index, cons
     if (!vec || !value) return CVEC_ERROR_NULL_POINTER;
     if (index >= vec->size) return CVEC_ERROR_OUT_OF_BOUNDS;
 
-    memcpy((uint8_t*)vec->data + (index * vec->element_size), value, vec->element_size);
+    size_t offset = 0;
+    if (__cvec_mul_overflow(index, vec->element_size, &offset)) {
+        return CVEC_ERROR_OVERFLOW;
+    }
+
+    memcpy((uint8_t*)vec->data + offset, value, vec->element_size);
     return CVEC_OK;
 }
 
@@ -226,7 +295,12 @@ static inline cvec_error_code cvec_back(c_vector_t* vec, void** out_ptr) {
     if (!vec || !out_ptr) return CVEC_ERROR_NULL_POINTER;
     if (vec->size == 0) return CVEC_ERROR_EMPTY_VECTOR;
 
-    *out_ptr = (uint8_t*)vec->data + ((vec->size - 1) * vec->element_size);
+    size_t offset = 0;
+    if (__cvec_mul_overflow(vec->size - 1, vec->element_size, &offset)) {
+        return CVEC_ERROR_OVERFLOW;
+    }
+    
+    *out_ptr = (uint8_t*)vec->data + offset;
     return CVEC_OK;
 }
 
@@ -239,7 +313,12 @@ static inline cvec_error_code cvec_append(c_vector_t* vec, const void* value) {
     status = cvec__ensure_capacity(vec, vec->size + 1);
     if (status != CVEC_OK) return status;
 
-    memcpy((uint8_t*)vec->data + (vec->size * vec->element_size), value, vec->element_size);
+    size_t offset = 0;
+    if (__cvec_mul_overflow(vec->size, vec->element_size, &offset)) {
+        return CVEC_ERROR_OVERFLOW;
+    }
+    
+    memcpy((uint8_t*)vec->data + offset, value, vec->element_size);
     vec->size++;
     return CVEC_OK;
 }
@@ -262,7 +341,12 @@ static inline cvec_error_code cvec_insert(c_vector_t* vec, const size_t index, c
         );
     }
 
-    memcpy((uint8_t*)vec->data + (index * vec->element_size), value, vec->element_size);
+    size_t offset = 0;
+    if (__cvec_mul_overflow(index, vec->element_size, &offset)) {
+        return CVEC_ERROR_OVERFLOW;
+    }
+    
+    memcpy((uint8_t*)vec->data + offset, value, vec->element_size);
     vec->size++;
     return CVEC_OK;
 }
@@ -287,7 +371,12 @@ static inline cvec_error_code cvec_pop(c_vector_t* vec, void* value) {
     if (!vec || !value) return CVEC_ERROR_NULL_POINTER;
     if (vec->size == 0) return CVEC_ERROR_EMPTY_VECTOR;
 
-    memcpy(value, (uint8_t*)vec->data + (vec->size - 1) * vec->element_size, vec->element_size);
+    size_t offset = 0;
+    if (__cvec_mul_overflow(vec->size - 1, vec->element_size, &offset)) {
+        return CVEC_ERROR_OVERFLOW;
+    }
+
+    memcpy(value, (uint8_t*)vec->data + offset, vec->element_size);
     vec->size--;
     return CVEC_OK;
 }
@@ -323,7 +412,7 @@ static inline cvec_error_code cvec_reverse(c_vector_t* vec) {
     if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
     if (vec->size <= 1) return CVEC_OK;
 
-    uint8_t stack_buffer[128];
+    uint8_t stack_buffer[256];
     void* tmp = (vec->element_size <= sizeof(stack_buffer)) ? stack_buffer : malloc(vec->element_size);
     if (!tmp) return CVEC_ERROR_ALLOCATION_FAILED;
 
@@ -357,6 +446,7 @@ static inline cvec_error_code cvec_from_array(
     if (count == 0 || element_size == 0) return CVEC_ERROR_INVALID_SIZE;
     if (out_vec->data != nullptr) cvec_delete(out_vec);
 
+    out_vec->element_size = element_size;
     status = cvec_reserve(out_vec, count);
     if (status != CVEC_OK) {
         cvec_delete(out_vec);
@@ -370,7 +460,6 @@ static inline cvec_error_code cvec_from_array(
 
     memcpy(out_vec->data, data, bytes);
     out_vec->size = count;
-    out_vec->element_size = element_size;
     return CVEC_OK;
 }
 
@@ -397,6 +486,7 @@ static inline cvec_error_code cvec_to_array(const c_vector_t* vec, void** out_ar
 static inline cvec_error_code cvec_copy(c_vector_t *src, c_vector_t* dst) {
     cvec_error_code status = CVEC_OK;
     if (!src || !dst) return CVEC_ERROR_NULL_POINTER;
+    if (src == dst) return CVEC_OK;
     if (src->size == 0) {
         dst->data = nullptr;
         dst->size = 0;
@@ -404,7 +494,6 @@ static inline cvec_error_code cvec_copy(c_vector_t *src, c_vector_t* dst) {
         dst->element_size = src->element_size; 
         return CVEC_OK;
     }
-    if (src == dst) return CVEC_OK;
 
     size_t bytes = 0;
     status = cvec__bytes_for(src->size, src->element_size, &bytes);
@@ -415,7 +504,7 @@ static inline cvec_error_code cvec_copy(c_vector_t *src, c_vector_t* dst) {
     if (!dst->data) return CVEC_ERROR_ALLOCATION_FAILED;
     memcpy(dst->data, src->data, bytes);
     dst->size = src->size;
-    dst->capacity = src->capacity;
+    dst->capacity = src->size;
     dst->element_size = src->element_size;
 
     return CVEC_OK;
