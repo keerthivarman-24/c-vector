@@ -17,7 +17,7 @@ Simply include the header file in your project:
 
 ```c
 #define C_VECTOR
-#include "include/vector.h"
+#include "vector.h"
 ```
 
 ### Basic Usage
@@ -25,32 +25,30 @@ Simply include the header file in your project:
 ```c
 #include <stdio.h>
 #define C_VECTOR
-#include "include/vector.h"
+#include "vector.h"
 
 int main(void) {
   c_vector_t vec;
 
-  /* Initialize vector for integers (returns cvec_result) */
-  cvec_result init_res = cvec_init(&vec, sizeof(int));
-  if (!init_res.success) {
-    fprintf(stderr, "cvec_init failed: %s\n", init_res.error.message);
+  /* Initialize vector for integers */
+  cvec_error_code status = cvec_init(&vec, sizeof(int));
+  if (status != CVEC_OK) {
+    fprintf(stderr, "cvec_init failed: %s\n", cvec_error_message(status));
     return 1;
   }
 
-  /* Add elements (check each result) */
+  /* Add elements */
   int a = 10, b = 20, c = 30;
-  cvec_result r = cvec_append(&vec, &a);
-  if (!r.success) { fprintf(stderr, "%s\n", r.error.message); cvec_delete(&vec); return 1; }
-  r = cvec_append(&vec, &b);
-  if (!r.success) { fprintf(stderr, "%s\n", r.error.message); cvec_delete(&vec); return 1; }
-  r = cvec_append(&vec, &c);
-  if (!r.success) { fprintf(stderr, "%s\n", r.error.message); cvec_delete(&vec); return 1; }
+  if (cvec_append(&vec, &a) != CVEC_OK) { fprintf(stderr, "append failed\n"); cvec_delete(&vec); return 1; }
+  if (cvec_append(&vec, &b) != CVEC_OK) { fprintf(stderr, "append failed\n"); cvec_delete(&vec); return 1; }
+  if (cvec_append(&vec, &c) != CVEC_OK) { fprintf(stderr, "append failed\n"); cvec_delete(&vec); return 1; }
 
-  /* Access elements (use safe getter which returns a pointer result) */
+  /* Access elements safely */
   for (size_t i = 0; i < cvec_size(&vec); i++) {
-    cvec_vector_ptr vptr = cvec_get(&vec, i);
-    if (!vptr.success) { fprintf(stderr, "%s\n", vptr.error.message); break; }
-    int value = *(int*)(vptr.data.ptr);
+    void* ptr;
+    cvec_error_code status = cvec_get(&vec, i, &ptr);
+    if (status != CVEC_OK) { fprintf(stderr, "%s\n", cvec_error_message(status)); break; }
+    int value = *(int*)ptr;
     printf("vector[%zu] = %d\n", i, value);
   }
 
@@ -77,9 +75,9 @@ typedef struct {
 
 #### `cvec_init`
 ```
-static cvec_result cvec_init(c_vector_t* arr, const size_t element_size)
+static cvec_error_code cvec_init(c_vector_t* arr, const size_t element_size)
 ```
-Initializes a new vector with the specified element size. Returns a `cvec_result` with `success` or `error` information.
+Initializes a new vector with the specified element size. Returns a `cvec_error_code` indicating success or error.
 
 - **Parameters:**
   - `arr` - Pointer to the vector to initialize
@@ -91,9 +89,9 @@ Initializes a new vector with the specified element size. Returns a `cvec_result
 
 #### `cvec_delete`
 ```
-static cvec_result cvec_delete(c_vector_t* arr)
+static void cvec_delete(c_vector_t* arr)
 ```
-Frees all memory associated with the vector and resets its state. Returns `cvec_result` to indicate success or error (safe to call multiple times).
+Frees all memory associated with the vector and resets its state. Safe to call multiple times.
 
 - **Parameters:**
   - `arr` - Pointer to the vector to delete
@@ -103,9 +101,9 @@ Frees all memory associated with the vector and resets its state. Returns `cvec_
 
 #### `cvec_append`
 ```
-static cvec_result cvec_append(c_vector_t* arr, const void* value)
+static cvec_error_code cvec_append(c_vector_t* arr, const void* value)
 ```
-Appends an element to the end of the vector. Automatically resizes if needed (1.5x growth). Returns `cvec_result` and does not abort on failure.
+Appends an element to the end of the vector. Automatically resizes if needed (1.5x growth). Returns `cvec_error_code` and does not abort on failure.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -121,9 +119,9 @@ Appends an element to the end of the vector. Automatically resizes if needed (1.
 
 #### `cvec_remove`
 ```
-static cvec_result cvec_remove(c_vector_t* arr, const size_t index)
+static cvec_error_code cvec_remove(c_vector_t* arr, const size_t index)
 ```
-Removes element at the specified index. Shifts subsequent elements left. Returns `cvec_result`.
+Removes element at the specified index. Shifts subsequent elements left. Returns `cvec_error_code`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -135,9 +133,9 @@ Removes element at the specified index. Shifts subsequent elements left. Returns
 
 #### `cvec_clear`
 ```
-static cvec_result cvec_clear(c_vector_t* arr)
+static cvec_error_code cvec_clear(c_vector_t* arr)
 ```
-Resets the vector size to 0 without freeing memory. Keeps capacity unchanged. Returns `cvec_result`.
+Resets the vector size to 0 without freeing memory. Keeps capacity unchanged. Returns `cvec_error_code`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -166,36 +164,44 @@ Checks if the vector is empty. (This remains a simple boolean accessor.)
 
 #### `cvec_front`
 ```
-static cvec_vector_ptr cvec_front(c_vector_t* arr)
+static cvec_error_code cvec_front(c_vector_t* arr, void** out_ptr)
 ```
-Returns a `cvec_vector_ptr` result containing a pointer to the first element or an error if the vector is empty or invalid.
+Retrieves a pointer to the first element. Returns `cvec_error_code` and fills `out_ptr` on success, or returns an error if the vector is empty or invalid.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
-- **Returns:** Pointer to the first element
+  - `out_ptr` - Output pointer to receive the element pointer
+- **Returns:** Error code (CVEC_OK on success)
 - **Time Complexity:** O(1)
 - **Example:** 
   ```c
-  int* first = (int*)cvec_front(&vec);
-  printf("First element: %d\n", *first);
+  void* ptr;
+  if (cvec_front(&vec, &ptr) == CVEC_OK) {
+    int first = *(int*)ptr;
+    printf("First element: %d\n", first);
+  }
   ```
 
 ---
 
 #### `cvec_back`
 ```
-static cvec_vector_ptr cvec_back(c_vector_t* arr)
+static cvec_error_code cvec_back(c_vector_t* arr, void** out_ptr)
 ```
-Returns a `cvec_vector_ptr` result containing a pointer to the last element or an error if the vector is empty or invalid.
+Retrieves a pointer to the last element. Returns `cvec_error_code` and fills `out_ptr` on success, or returns an error if the vector is empty or invalid.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
-- **Returns:** Pointer to the last element
+  - `out_ptr` - Output pointer to receive the element pointer
+- **Returns:** Error code (CVEC_OK on success)
 - **Time Complexity:** O(1)
 - **Example:** 
   ```c
-  int* last = (int*)cvec_back(&vec);
-  printf("Last element: %d\n", *last);
+  void* ptr;
+  if (cvec_back(&vec, &ptr) == CVEC_OK) {
+    int last = *(int*)ptr;
+    printf("Last element: %d\n", last);
+  }
   ```
 
 ---
@@ -204,27 +210,31 @@ Returns a `cvec_vector_ptr` result containing a pointer to the last element or a
 
 #### `cvec_get`
 ```
-static cvec_vector_ptr cvec_get(c_vector_t* arr, const size_t index)
+static cvec_error_code cvec_get(c_vector_t* arr, const size_t index, void** out_ptr)
 ```
-Returns a `cvec_vector_ptr` result containing a pointer to the element at `index` with bounds checking. Check `result.success` before using `result.data.ptr`.
+Retrieves a pointer to the element at `index` with bounds checking. Returns `cvec_error_code` and fills `out_ptr` on success.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
   - `index` - Index of element to retrieve
-- **Returns:** Pointer to the element (must cast to correct type)
+  - `out_ptr` - Output pointer to receive the element pointer
+- **Returns:** Error code (CVEC_OK on success, CVEC_ERROR_OUT_OF_BOUNDS on invalid index)
 - **Example:** 
   ```c
-  int* value_ptr = (int*)cvec_get(&vec, 0);
-  printf("Value: %d\n", *value_ptr);
+  void* ptr;
+  if (cvec_get(&vec, 0, &ptr) == CVEC_OK) {
+    int value = *(int*)ptr;
+    printf("Value: %d\n", value);
+  }
   ```
 
 ---
 
 #### `cvec_set`
 ```
-static cvec_result cvec_set(c_vector_t* arr, const size_t index, const void* value)
+static cvec_error_code cvec_set(c_vector_t* arr, const size_t index, const void* value)
 ```
-Sets element at index with bounds checking. Returns `cvec_result`.
+Sets element at index with bounds checking. Returns `cvec_error_code`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -240,52 +250,66 @@ Sets element at index with bounds checking. Returns `cvec_result`.
 
 #### `cvec_at` (Macro)
 ```
-#define cvec_at(arr, index, type)
+#define cvec_at(arr, index, out_value_ptr)
 ```
-Fast, unchecked macro for element access. Use when performance is critical and bounds are verified. This macro remains unchecked and is intended for hot paths where you have already validated the index.
+Safe macro for copying element at `index` into a provided variable. Returns `cvec_error_code`. Includes bounds checking and size validation.
 
 - **Parameters:**
-  - `arr` - The vector (passed by value, not pointer)
+  - `arr` - Pointer to the vector
   - `index` - Zero-based index
-  - `type` - The data type to cast to
-- **Returns:** The element at the specified index
-- **Warning:** No bounds checking - unsafe if index is out of range
-- **Example:** `int val = cvec_at(vec, 0, int);`
+  - `out_value_ptr` - Pointer to a variable of the correct type to receive the value
+- **Returns:** Error code (CVEC_OK on success)
+- **Example:** 
+  ```c
+  int val;
+  if (cvec_at(&vec, 0, &val) == CVEC_OK) {
+    printf("Element: %d\n", val);
+  }
+  ```
 
 ---
 
 ### Advanced Functions
 
-#### `cvec_from_array` (and `cvec` macro)
+#### `cvec_from_array` (and `cvec_from_c_array` macro)
 ```c
-#define cvec(array) cvec_from_array((array), sizeof(array) / sizeof((array)[0]), sizeof((array)[0]))
+#define cvec_from_c_array(out_vec, arr) \
+    cvec_from_array((out_vec), (arr), cvec_array_count(arr), sizeof((arr)[0]))
 
-static c_vector_t cvec_from_array(const void* data, size_t count, size_t element_size)
+static cvec_error_code cvec_from_array(
+    c_vector_t* out_vec,
+    const void* data,
+    const size_t count,
+    const size_t element_size
+)
 ```
-Creates a new vector initialized with data from an existing array.
+Initializes a vector with data from an existing array. Returns `cvec_error_code`.
 
 - **Parameters:**
+  - `out_vec` - Output vector to initialize
   - `data` - Pointer to the array data
   - `count` - Number of elements in the array
   - `element_size` - Size of each element in bytes
-- **Returns:** A new `c_vector_t` initialized with the array data
+- **Returns:** Error code (CVEC_OK on success)
 - **Time Complexity:** O(n)
 - **Example:** 
   ```c
   int arr[] = {10, 20, 30, 40, 50};
-  c_vector_t vec = cvec(arr);  // Using the convenient macro
+  c_vector_t vec;
+  cvec_from_c_array(&vec, arr);  // Using the convenient macro
   
   // Manual usage:
-  c_vector_t vec2 = cvec_from_array(arr, 5, sizeof(int));
+  c_vector_t vec2;
+  cvec_from_array(&vec2, arr, 5, sizeof(int));
   ```
 
 ---
 
 #### `cvec_reserve`
 ```
-static cvec_result cvec_reserve(c_vector_t* arr, const size_t capacity)
+static cvec_error_code cvec_reserve(c_vector_t* arr, const size_t capacity)
 ```
-Pre-allocates memory for the specified capacity. Prevents multiple reallocations. Returns `cvec_result`.
+Pre-allocates memory for the specified capacity. Prevents multiple reallocations. Returns `cvec_error_code`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -297,28 +321,32 @@ Pre-allocates memory for the specified capacity. Prevents multiple reallocations
 
 #### `cvec_to_array`
 ```
-static cvec_ptr_result cvec_to_array(c_vector_t* arr)
+static cvec_error_code cvec_to_array(const c_vector_t* arr, void** out_array)
 ```
-Creates a heap-allocated copy of the vector's data as a regular array. Returns a pointer result; caller must check and free returned pointer on success.
+Creates a heap-allocated copy of the vector's data as a regular array. Returns `cvec_error_code` and fills `out_array` on success.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
-- **Returns:** Pointer to new array (caller must `free()`)
+  - `out_array` - Output pointer to receive the allocated array
+- **Returns:** Error code (CVEC_OK on success)
 - **Warning:** Caller is responsible for freeing the returned pointer
 - **Example:** 
   ```c
-  int* array = (int*)cvec_to_array(&vec);
-  // Use array...
-  free(array);
+  void* array;
+  if (cvec_to_array(&vec, &array) == CVEC_OK) {
+    int* int_array = (int*)array;
+    // Use array...
+    free(int_array);
+  }
   ```
 
 ---
 
 #### `cvec_shrink_to_fit`
 ```
-static cvec_result cvec_shrink_to_fit(c_vector_t* arr)
+static cvec_error_code cvec_shrink_to_fit(c_vector_t* arr)
 ```
-Reduces the vector's capacity to match its current size, freeing unused memory. Returns `cvec_result`.
+Reduces the vector's capacity to match its current size, freeing unused memory. Returns `cvec_error_code`.
 
 - **Parameters:**
   - `arr` - Pointer to the vector
@@ -352,16 +380,31 @@ typedef struct {
 } Student;
 
 c_vector_t students;
-cvec_init(&students, sizeof(Student));
+cvec_error_code status = cvec_init(&students, sizeof(Student));
+if (status != CVEC_OK) {
+  fprintf(stderr, "Init failed: %s\n", cvec_error_message(status));
+  return 1;
+}
 
 Student s1 = {1, "Alice", 95.5};
-cvec_append(&students, &s1);
+if (cvec_append(&students, &s1) != CVEC_OK) {
+  fprintf(stderr, "Append failed\n");
+  cvec_delete(&students);
+  return 1;
+}
 
-// Access with macro
-Student retrieved = cvec_at(students, 0, Student);
+// Access with safe macro
+Student retrieved;
+if (cvec_at(&students, 0, &retrieved) == CVEC_OK) {
+  printf("Student: %s (score: %.1f)\n", retrieved.name, retrieved.score);
+}
 
-// Access with safe function
-Student* ptr = (Student*)cvec_get(&students, 0);
+// Alternative: access with function
+void* ptr;
+if (cvec_get(&students, 0, &ptr) == CVEC_OK) {
+  Student* student = (Student*)ptr;
+  printf("ID: %d\n", student->id);
+}
 
 cvec_delete(&students);
 ```
