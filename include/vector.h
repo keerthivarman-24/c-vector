@@ -521,6 +521,14 @@ static inline cvec_error_code cvec_copy(c_vector_t *src, c_vector_t* dst) {
     return CVEC_OK;
 }
 
+static inline cvec_error_code cvec_move(c_vector_t *src, c_vector_t* dst) {
+    if (!src || !dst) return CVEC_ERROR_NULL_POINTER;
+    cvec_delete(dst);
+    *dst = *src;
+    *src = (c_vector_t){0};
+    return CVEC_OK;
+}
+
 #define cvec_at(vec_ptr, index, out_value_ptr) \
     cvec_at_impl((vec_ptr), (index), (out_value_ptr), sizeof(*(out_value_ptr)))
 
