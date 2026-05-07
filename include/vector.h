@@ -395,6 +395,28 @@ static inline cvec_error_code cvec_pop_discard(c_vector_t* vec) {
     return CVEC_OK;
 }
 
+#define is_cvec(x) _Generic((x), \
+    c_vector_t: true, \
+    default: false \
+)
+
+static inline cvec_error_code cvec_extend(c_vector_t* dst, const c_vector_t* src) {
+    if (!dst || !src) return CVEC_ERROR_NULL_POINTER;
+    if (dst->element_size != src->element_size) return CVEC_ERROR_INVALID_SIZE;
+    if (src->size == 0) return CVEC_OK;
+    size_t new_size = dst->size + src->size;
+    if (new_size < dst->size) return CVEC_ERROR_OVERFLOW;
+    cvec_error_code status = __cvec_ensure_capacity(dst, new_size);
+    if (status != CVEC_OK) return status;
+    memcpy(
+        (uint8_t*)dst->data + dst->size * dst->element_size,
+        src->data,
+        src->size * src->element_size
+    );
+    dst->size = new_size;
+    return CVEC_OK;
+}
+
 static inline cvec_error_code cvec_fill(c_vector_t* vec, const void* value, const size_t count) {
     cvec_error_code status = CVEC_OK;
     size_t i = 0;
