@@ -41,6 +41,9 @@ typedef struct {
     "which is not safe to use" \
 )))
 
+#define __CVEC_DEPRCATED_WARNING(str) \
+    __attribute__((deprecated(str)))
+
 #define cvec_array_count(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define cvec_from_c_array(out_vec, arr) \
     cvec_from_array((out_vec), (arr), cvec_array_count(arr), sizeof((arr)[0]))
@@ -565,6 +568,16 @@ static inline cvec_error_code cvec_at_impl(
     if (out_size != vec->element_size) return CVEC_ERROR_INVALID_SIZE;
 
     memcpy(out_value, (const uint8_t*)vec->data + (index * vec->element_size), vec->element_size);
+    return CVEC_OK;
+}
+
+typedef int (*cvec_compare_fn)(const void* a, const void* b);
+
+static inline cvec_error_code cvec_sort(c_vector_t* vec, cvec_compare_fn compare) {
+    if (!vec || !compare) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size <= 1) return CVEC_OK;
+
+    qsort(vec->data, vec->size, vec->element_size, compare);
     return CVEC_OK;
 }
 
