@@ -41,6 +41,9 @@ typedef struct {
     "which is not safe to use" \
 )))
 
+#define __CVEC_DEPRCATED_WARNING(str) \
+    __attribute__((deprecated(str)))
+
 #define cvec_array_count(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define cvec_from_c_array(out_vec, arr) \
     cvec_from_array((out_vec), (arr), cvec_array_count(arr), sizeof((arr)[0]))
@@ -395,6 +398,28 @@ static inline cvec_error_code cvec_pop_discard(c_vector_t* vec) {
     return CVEC_OK;
 }
 
+#define is_cvec(x) _Generic((x), \
+    c_vector_t: true, \
+    default: false \
+)
+
+static inline cvec_error_code cvec_extend(c_vector_t* dst, const c_vector_t* src) {
+    if (!dst || !src) return CVEC_ERROR_NULL_POINTER;
+    if (dst->element_size != src->element_size) return CVEC_ERROR_INVALID_SIZE;
+    if (src->size == 0) return CVEC_OK;
+    size_t new_size = dst->size + src->size;
+    if (new_size < dst->size) return CVEC_ERROR_OVERFLOW;
+    cvec_error_code status = __cvec_ensure_capacity(dst, new_size);
+    if (status != CVEC_OK) return status;
+    memcpy(
+        (uint8_t*)dst->data + dst->size * dst->element_size,
+        src->data,
+        src->size * src->element_size
+    );
+    dst->size = new_size;
+    return CVEC_OK;
+}
+
 static inline cvec_error_code cvec_fill(c_vector_t* vec, const void* value, const size_t count) {
     cvec_error_code status = CVEC_OK;
     size_t i = 0;
@@ -543,6 +568,16 @@ static inline cvec_error_code cvec_at_impl(
     if (out_size != vec->element_size) return CVEC_ERROR_INVALID_SIZE;
 
     memcpy(out_value, (const uint8_t*)vec->data + (index * vec->element_size), vec->element_size);
+    return CVEC_OK;
+}
+
+typedef int (*cvec_compare_fn)(const void* a, const void* b);
+
+static inline cvec_error_code cvec_sort(c_vector_t* vec, cvec_compare_fn compare) {
+    if (!vec || !compare) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size <= 1) return CVEC_OK;
+
+    qsort(vec->data, vec->size, vec->element_size, compare);
     return CVEC_OK;
 }
 
