@@ -106,10 +106,12 @@ __CVEC_INTERNAL static inline cvec_error_code __cvec_ensure_capacity(c_vector_t*
 
     cap = (vec->capacity == 0) ? CVEC_INITIAL_CAPACITY : vec->capacity;
     while (cap < min_capacity) {
-        if (cap > SIZE_MAX - (cap >> 1)) {
+        size_t grow = cap >> 1;
+        if (grow == 0) grow = 1;
+        if (cap > SIZE_MAX - grow) {
             return CVEC_ERROR_OVERFLOW;
         }
-        size_t next = cap + (cap >> 1);
+        size_t next = cap + grow;
         cap = next;
     }
 
@@ -132,15 +134,16 @@ static inline cvec_error_code cvec_init(c_vector_t* vec, const size_t element_si
     if (!vec) return CVEC_ERROR_NULL_POINTER;
     if (element_size == 0) return CVEC_ERROR_INVALID_SIZE;
 
+    *vec = (c_vector_t){0};
+
     size_t bytes = 0;
     cvec_error_code status = __cvec_bytes_for(CVEC_INITIAL_CAPACITY, element_size, &bytes);
     if (status != CVEC_OK) {
-        cvec_delete(vec);
         return status;
     }
+
     void* data = malloc(bytes);
     if (!data) {
-        cvec_delete(vec);
         return CVEC_ERROR_ALLOCATION_FAILED;
     }
 
@@ -196,7 +199,9 @@ static inline cvec_error_code cvec_shrink_to_fit(c_vector_t* vec) {
     if (!vec) return CVEC_ERROR_NULL_POINTER;
     if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
     if (vec->size == 0) {
-        cvec_delete(vec);
+        free(vec->data);
+        vec->data = nullptr;
+        vec->capacity = 0;
         return CVEC_OK;
     }
 
@@ -524,6 +529,7 @@ static inline cvec_error_code cvec_copy(c_vector_t *src, c_vector_t* dst) {
     if (!src || !dst) return CVEC_ERROR_NULL_POINTER;
     if (src == dst) return CVEC_OK;
     if (src->size == 0) {
+        if (dst->data != nullptr) free(dst->data);
         dst->data = nullptr;
         dst->size = 0;
         dst->capacity = 0;
