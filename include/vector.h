@@ -14,7 +14,7 @@ typedef enum : uint8_t {
     CVEC_ERROR_INVALID_SIZE,
     CVEC_ERROR_EMPTY_VECTOR,
     CVEC_ERROR_NOT_INITIALIZED,
-    CVEC_ERROR_NOT_FOUND,
+    CVEC_ERROR_ELEMENT_NOT_FOUND,
     CVEC_ERROR_INVALID_INDEX,
     CVEC_ERROR_INVALID_VALUE,
     CVEC_ERROR_INVALID_OPERATION,
@@ -58,7 +58,7 @@ static inline const char* cvec_error_message(const cvec_error_code code) {
         case CVEC_ERROR_INVALID_SIZE: return "invalid size";
         case CVEC_ERROR_EMPTY_VECTOR: return "empty vector";
         case CVEC_ERROR_NOT_INITIALIZED: return "not initialized";
-        case CVEC_ERROR_NOT_FOUND: return "not found";
+        case CVEC_ERROR_ELEMENT_NOT_FOUND: return "element not found";
         case CVEC_ERROR_INVALID_INDEX: return "invalid index";
         case CVEC_ERROR_INVALID_VALUE: return "invalid value";
         case CVEC_ERROR_INVALID_OPERATION: return "invalid operation";
@@ -585,6 +585,22 @@ static inline cvec_error_code cvec_sort(c_vector_t* vec, cvec_compare_fn compare
 
     qsort(vec->data, vec->size, vec->element_size, compare);
     return CVEC_OK;
+}
+
+static inline cvec_error_code cvec_find(const c_vector_t* vec, const void* value, cvec_compare_fn compare, int64_t* out_index) {
+    if (!vec || !value || !out_index || !compare) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size == 0) return CVEC_ERROR_EMPTY_VECTOR;
+
+    for (size_t i = 0; i < vec->size; i++){
+        const void* element = (const uint8_t*)vec->data + (i * vec->element_size);
+        if (compare(element, value) == 0) {
+            *out_index = (int64_t)i;
+            return CVEC_OK;
+        }
+    }
+    
+    *out_index = -1;
+    return CVEC_ERROR_ELEMENT_NOT_FOUND;
 }
 
 #pragma GCC diagnostic pop
