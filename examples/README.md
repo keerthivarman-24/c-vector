@@ -90,8 +90,8 @@ done
 ### Initialization & Cleanup
 | Function | Description |
 |----------|-------------|
-| `cvec_result cvec_init(&vec, sizeof(type))` | Initialize vector for specific type; returns `cvec_result` — check `result.success` before using the vector |
-| `cvec_result cvec_delete(&vec)` | Free all memory and reset; returns `cvec_result` |
+| `cvec_error_code cvec_init(&vec, sizeof(type))` | Initialize vector for specific type; returns status code |
+| `cvec_delete(&vec)` | Free all memory and reset |
 
 ### Adding/Removing Elements
 | Function | Description |
@@ -103,11 +103,11 @@ done
 ### Accessing Elements
 | Function | Description |
 |----------|-------------|
-| `cvec_get(&vec, index)` | Get pointer with bounds check |
+| `cvec_get(&vec, index, &ptr)` | Get element pointer with bounds check |
 | `cvec_set(&vec, index, &value)` | Set value with bounds check |
-| `cvec_at(vec, index, type)` | Get value directly (macro) |
-| `cvec_front(&vec)` | Pointer to first element |
-| `cvec_back(&vec)` | Pointer to last element |
+| `cvec_at(&vec, index, &value)` | Copy value out with type-size validation |
+| `cvec_front(&vec, &ptr)` | Get pointer to first element |
+| `cvec_back(&vec, &ptr)` | Get pointer to last element |
 
 ### Status & Utility
 | Function | Description |
@@ -143,7 +143,8 @@ for (int i = 0; i < 1000; i++) {
 ### Pattern 2: Safe Iteration
 ```c
 for (size_t i = 0; i < cvec_size(&vec); i++) {
-    int value = cvec_at(vec, i, int);
+    int value = 0;
+    if (cvec_at(&vec, i, &value) != CVEC_OK) break;
     // Use value...
 }
 ```
@@ -151,8 +152,11 @@ for (size_t i = 0; i < cvec_size(&vec); i++) {
 ### Pattern 3: Modifying Elements
 ```c
 // Method 1: Direct pointer access
-int* elem = (int*)cvec_get(&vec, 5);
-*elem = 100;
+void* ptr = NULL;
+if (cvec_get(&vec, 5, &ptr) == CVEC_OK) {
+    int* elem = (int*)ptr;
+    *elem = 100;
+}
 
 // Method 2: Using set
 int new_value = 100;
@@ -180,7 +184,7 @@ for (int i = (int)cvec_size(&vec) - 1; i >= 0; i--) {
 
 ## Error Handling
 
-The library no longer aborts on error. Most operations return a result structure (e.g., `cvec_result`, `cvec_vector_ptr`, `cvec_ptr_result`) that contains a `success` boolean and an `error` payload when `success` is false. Callers should check `result.success` and handle `result.error` (code/message) appropriately.
+The library does not abort on error. Most operations return `cvec_error_code` and callers should check for `CVEC_OK` before using outputs.
 
 Common failure reasons:
 - NULL pointer arguments
@@ -191,13 +195,21 @@ Common failure reasons:
 Example usage pattern:
 ```c
 // init
-cvec_result r = cvec_init(&vec, sizeof(int));
-if (!r.success) { fprintf(stderr, "init failed: %s\n", r.error.message); return 1; }
+cvec_error_code status = cvec_init(&vec, sizeof(int));
+if (status != CVEC_OK) {
+    fprintf(stderr, "init failed: %s\n", cvec_error_message(status));
+    return 1;
+}
 
 // get element
-cvec_vector_ptr p = cvec_get(&vec, 0);
-if (!p.success) { fprintf(stderr, "get failed: %s\n", p.error.message); }
-else { int v = *(int*)p.data.ptr; }
+void* p = NULL;
+status = cvec_get(&vec, 0, &p);
+if (status != CVEC_OK) {
+    fprintf(stderr, "get failed: %s\n", cvec_error_message(status));
+} else {
+    int v = *(int*)p;
+    (void)v;
+}
 ```
 
 ## Next Steps

@@ -14,7 +14,7 @@ typedef enum : uint8_t {
     CVEC_ERROR_INVALID_SIZE,
     CVEC_ERROR_EMPTY_VECTOR,
     CVEC_ERROR_NOT_INITIALIZED,
-    CVEC_ERROR_NOT_FOUND,
+    CVEC_ERROR_ELEMENT_NOT_FOUND,
     CVEC_ERROR_INVALID_INDEX,
     CVEC_ERROR_INVALID_VALUE,
     CVEC_ERROR_INVALID_OPERATION,
@@ -58,7 +58,7 @@ static inline const char* cvec_error_message(const cvec_error_code code) {
         case CVEC_ERROR_INVALID_SIZE: return "invalid size";
         case CVEC_ERROR_EMPTY_VECTOR: return "empty vector";
         case CVEC_ERROR_NOT_INITIALIZED: return "not initialized";
-        case CVEC_ERROR_NOT_FOUND: return "not found";
+        case CVEC_ERROR_ELEMENT_NOT_FOUND: return "element not found";
         case CVEC_ERROR_INVALID_INDEX: return "invalid index";
         case CVEC_ERROR_INVALID_VALUE: return "invalid value";
         case CVEC_ERROR_INVALID_OPERATION: return "invalid operation";
@@ -106,10 +106,12 @@ __CVEC_INTERNAL static inline cvec_error_code __cvec_ensure_capacity(c_vector_t*
 
     cap = (vec->capacity == 0) ? CVEC_INITIAL_CAPACITY : vec->capacity;
     while (cap < min_capacity) {
-        if (cap > SIZE_MAX - (cap >> 1)) {
+        size_t grow = cap >> 1;
+        if (grow == 0) grow = 1;
+        if (cap > SIZE_MAX - grow) {
             return CVEC_ERROR_OVERFLOW;
         }
-        size_t next = cap + (cap >> 1);
+        size_t next = cap + grow;
         cap = next;
     }
 
@@ -132,15 +134,16 @@ static inline cvec_error_code cvec_init(c_vector_t* vec, const size_t element_si
     if (!vec) return CVEC_ERROR_NULL_POINTER;
     if (element_size == 0) return CVEC_ERROR_INVALID_SIZE;
 
+    *vec = (c_vector_t){0};
+
     size_t bytes = 0;
     cvec_error_code status = __cvec_bytes_for(CVEC_INITIAL_CAPACITY, element_size, &bytes);
     if (status != CVEC_OK) {
-        cvec_delete(vec);
         return status;
     }
+
     void* data = malloc(bytes);
     if (!data) {
-        cvec_delete(vec);
         return CVEC_ERROR_ALLOCATION_FAILED;
     }
 
@@ -196,7 +199,9 @@ static inline cvec_error_code cvec_shrink_to_fit(c_vector_t* vec) {
     if (!vec) return CVEC_ERROR_NULL_POINTER;
     if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
     if (vec->size == 0) {
-        cvec_delete(vec);
+        free(vec->data);
+        vec->data = nullptr;
+        vec->capacity = 0;
         return CVEC_OK;
     }
 
@@ -524,6 +529,7 @@ static inline cvec_error_code cvec_copy(c_vector_t *src, c_vector_t* dst) {
     if (!src || !dst) return CVEC_ERROR_NULL_POINTER;
     if (src == dst) return CVEC_OK;
     if (src->size == 0) {
+        if (dst->data != nullptr) free(dst->data);
         dst->data = nullptr;
         dst->size = 0;
         dst->capacity = 0;
@@ -579,6 +585,22 @@ static inline cvec_error_code cvec_sort(c_vector_t* vec, cvec_compare_fn compare
 
     qsort(vec->data, vec->size, vec->element_size, compare);
     return CVEC_OK;
+}
+
+static inline cvec_error_code cvec_find(const c_vector_t* vec, const void* value, cvec_compare_fn compare, int64_t* out_index) {
+    if (!vec || !value || !out_index || !compare) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size == 0) return CVEC_ERROR_EMPTY_VECTOR;
+
+    for (size_t i = 0; i < vec->size; i++){
+        const void* element = (const uint8_t*)vec->data + (i * vec->element_size);
+        if (compare(element, value) == 0) {
+            *out_index = (int64_t)i;
+            return CVEC_OK;
+        }
+    }
+    
+    *out_index = -1;
+    return CVEC_ERROR_ELEMENT_NOT_FOUND;
 }
 
 #pragma GCC diagnostic pop
