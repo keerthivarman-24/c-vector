@@ -603,5 +603,32 @@ static inline cvec_error_code cvec_find(const c_vector_t* vec, const void* value
     return CVEC_ERROR_ELEMENT_NOT_FOUND;
 }
 
+static inline cvec_error_code cvec_find_sorted(const c_vector_t* vec, const void* value, cvec_compare_fn compare, int64_t* out_index) {
+    if (!vec || !value || !out_index || !compare) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size == 0) return CVEC_ERROR_EMPTY_VECTOR;
+
+    size_t left = 0;
+    size_t right = vec->size;
+
+    while (left < right) {
+        size_t mid = left + (right - left) / 2;
+        const void* element = (const uint8_t*)vec->data + (mid * vec->element_size);
+        int cmp = compare(element, value);
+        if (cmp == 0) {
+            *out_index = (int64_t)mid;
+            return CVEC_OK;
+        } else if (cmp < 0) {
+            left = mid + 1;
+        } else {
+            right = mid;
+        }
+    }
+
+    *out_index = -1;
+    return CVEC_ERROR_ELEMENT_NOT_FOUND;
+}
+
+
+
 #pragma GCC diagnostic pop
 #endif /* C_VECTOR */
