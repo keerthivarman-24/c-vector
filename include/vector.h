@@ -628,7 +628,15 @@ static inline cvec_error_code cvec_find_sorted(const c_vector_t* vec, const void
     return CVEC_ERROR_ELEMENT_NOT_FOUND;
 }
 
+static inline cvec_error_code cvec_split(c_vector_t vec, const size_t start, const size_t end, c_vector_t* out_vec) {
+    if (!out_vec) return CVEC_ERROR_NULL_POINTER;
+    if (start > end || end > vec.size) return CVEC_ERROR_INVALID_INDEX;
 
+    size_t count = end - start;
+    if (count == 0) return cvec_init(out_vec, vec.element_size);
+
+    return cvec_from_array(out_vec, (const uint8_t*)vec.data + (start * vec.element_size), count, vec.element_size);
+}
 
 #pragma GCC diagnostic pop
 #endif /* C_VECTOR */
