@@ -638,5 +638,15 @@ static inline cvec_error_code cvec_split(c_vector_t vec, const size_t start, con
     return cvec_from_array(out_vec, (const uint8_t*)vec.data + (start * vec.element_size), count, vec.element_size);
 }
 
+static inline cvec_error_code cvec_contains(const c_vector_t* vec, const void* value, cvec_compare_fn compare) {
+    if (!vec || !value || !compare) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size == 0) {
+        return CVEC_ERROR_ELEMENT_NOT_FOUND;
+    }
+    
+    int64_t dummy_index = 0;
+    return cvec_find(vec, value, compare, &dummy_index) == CVEC_OK ? CVEC_OK : CVEC_ERROR_ELEMENT_NOT_FOUND;
+}
+
 #pragma GCC diagnostic pop
 #endif /* C_VECTOR */
