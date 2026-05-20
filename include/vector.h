@@ -643,9 +643,27 @@ static inline cvec_error_code cvec_contains(const c_vector_t* vec, const void* v
     if (vec->size == 0) {
         return CVEC_ERROR_ELEMENT_NOT_FOUND;
     }
-    
+
     int64_t dummy_index = 0;
     return cvec_find(vec, value, compare, &dummy_index) == CVEC_OK ? CVEC_OK : CVEC_ERROR_ELEMENT_NOT_FOUND;
+}
+
+static inline cvec_error_code cvec_count_match(const c_vector_t* vec, const void* value, cvec_compare_fn compare, size_t* out_count) {
+    if (!vec || !value || !compare || !out_count) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size == 0) {
+        *out_count = 0;
+        return CVEC_OK;
+    }
+
+    size_t count = 0;
+    for (size_t i = 0; i < vec->size; i++) {
+        const void* element = (const uint8_t*)vec->data + (i * vec->element_size);
+        if (compare(element, value) == 0) {
+            count++;
+        }
+    }
+    *out_count = count;
+    return CVEC_OK;
 }
 
 #pragma GCC diagnostic pop
