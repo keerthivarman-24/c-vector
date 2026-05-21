@@ -37,11 +37,11 @@ typedef struct {
 
 #define __CVEC_INTERNAL \
     __attribute__((deprecated( \
-    "Use public API instead of internal helpers " \
-    "which is not safe to use" \
-)))
+        "Use public API instead of internal helpers " \
+        "which is not safe to use" \
+    )))
 
-#define __CVEC_DEPRCATED_WARNING(str) \
+#define __CVEC_DEPRECATED_WARNING (str) \
     __attribute__((deprecated(str)))
 
 #define cvec_array_count(arr) (sizeof(arr) / sizeof((arr)[0]))
@@ -628,14 +628,14 @@ static inline cvec_error_code cvec_find_sorted(const c_vector_t* vec, const void
     return CVEC_ERROR_ELEMENT_NOT_FOUND;
 }
 
-static inline cvec_error_code cvec_split(c_vector_t vec, const size_t start, const size_t end, c_vector_t* out_vec) {
+static inline cvec_error_code cvec_split(const c_vector_t* vec, const size_t start, const size_t end, c_vector_t* out_vec) {
     if (!out_vec) return CVEC_ERROR_NULL_POINTER;
-    if (start > end || end > vec.size) return CVEC_ERROR_INVALID_INDEX;
+    if (start > end || end > vec->size || start >= vec->size) return CVEC_ERROR_INVALID_INDEX;
 
     size_t count = end - start;
-    if (count == 0) return cvec_init(out_vec, vec.element_size);
+    if (count == 0) return cvec_init(out_vec, vec->element_size);
 
-    return cvec_from_array(out_vec, (const uint8_t*)vec.data + (start * vec.element_size), count, vec.element_size);
+    return cvec_from_array(out_vec, (const uint8_t*)vec->data + (start * vec->element_size), count, vec->element_size);
 }
 
 static inline cvec_error_code cvec_contains(const c_vector_t* vec, const void* value, cvec_compare_fn compare) {
