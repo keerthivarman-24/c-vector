@@ -182,6 +182,7 @@ static inline cvec_error_code cvec_reserve(c_vector_t* vec, const size_t new_cap
     size_t bytes = 0;
 
     if (!vec) return CVEC_ERROR_NULL_POINTER;
+    if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
     if (new_capacity <= vec->capacity) return CVEC_OK;
 
     cvec_error_code status = __cvec_bytes_for(new_capacity, vec->element_size, &bytes);
@@ -226,17 +227,13 @@ static inline cvec_error_code cvec_resize(c_vector_t* vec, const size_t new_size
         status = __cvec_reserve(vec, new_size);
         if (status != CVEC_OK) return status;
     }
-
+    size_t num_new = new_size - vec->size;
     if (default_value) {
-        size_t num_new = new_size - vec->size;
-
         if (vec->element_size == 1) {
-            size_t offset = 0;
-            if (__cvec_mul_overflow(vec->size, vec->element_size, &offset)) {
-                return CVEC_ERROR_OVERFLOW;
-            }
-            memset((uint8_t*)vec->data + offset,
-                   *(const uint8_t*)default_value, num_new);
+            memset((uint8_t*)vec->data + vec->size,
+                *(const uint8_t*)default_value,
+                num_new
+                );
         } else if (__cvec_is_all_zero(default_value, vec->element_size)) {
             size_t offset = 0;
             if (__cvec_mul_overflow(vec->size, vec->element_size, &offset)) {
@@ -252,6 +249,10 @@ static inline cvec_error_code cvec_resize(c_vector_t* vec, const size_t new_size
                 memcpy((uint8_t*)vec->data + loop_offset,
                        default_value, vec->element_size);
             }
+        }
+    }else {
+        if (vec->element_size == 1) {
+            memset((uint8_t*)vec->data + vec->size,0, num_new);
         }
     }
 
@@ -403,14 +404,10 @@ static inline cvec_error_code cvec_pop_discard(c_vector_t* vec) {
     return CVEC_OK;
 }
 
-#define is_cvec(x) _Generic((x), \
-    c_vector_t: true, \
-    default: false \
-)
-
 static inline cvec_error_code cvec_extend(c_vector_t* dst, const c_vector_t* src) {
     if (!dst || !src) return CVEC_ERROR_NULL_POINTER;
     if (dst->element_size != src->element_size) return CVEC_ERROR_INVALID_SIZE;
+    if (dst->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
     if (src->size == 0) return CVEC_OK;
     size_t new_size = dst->size + src->size;
     if (new_size < dst->size) return CVEC_ERROR_OVERFLOW;
