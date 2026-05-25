@@ -37,11 +37,11 @@ typedef struct {
 
 #define __CVEC_INTERNAL \
     __attribute__((deprecated( \
-    "Use public API instead of internal helpers " \
-    "which is not safe to use" \
-)))
+        "Use public API instead of internal helpers " \
+        "which is not safe to use" \
+    )))
 
-#define __CVEC_DEPRCATED_WARNING(str) \
+#define __CVEC_DEPRECATED_WARNING (str) \
     __attribute__((deprecated(str)))
 
 #define cvec_array_count(arr) (sizeof(arr) / sizeof((arr)[0]))
@@ -182,6 +182,7 @@ static inline cvec_error_code cvec_reserve(c_vector_t* vec, const size_t new_cap
     size_t bytes = 0;
 
     if (!vec) return CVEC_ERROR_NULL_POINTER;
+    if (vec->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
     if (new_capacity <= vec->capacity) return CVEC_OK;
 
     cvec_error_code status = __cvec_bytes_for(new_capacity, vec->element_size, &bytes);
@@ -226,17 +227,13 @@ static inline cvec_error_code cvec_resize(c_vector_t* vec, const size_t new_size
         status = __cvec_reserve(vec, new_size);
         if (status != CVEC_OK) return status;
     }
-
+    size_t num_new = new_size - vec->size;
     if (default_value) {
-        size_t num_new = new_size - vec->size;
-
         if (vec->element_size == 1) {
-            size_t offset = 0;
-            if (__cvec_mul_overflow(vec->size, vec->element_size, &offset)) {
-                return CVEC_ERROR_OVERFLOW;
-            }
-            memset((uint8_t*)vec->data + offset,
-                   *(const uint8_t*)default_value, num_new);
+            memset((uint8_t*)vec->data + vec->size,
+                *(const uint8_t*)default_value,
+                num_new
+                );
         } else if (__cvec_is_all_zero(default_value, vec->element_size)) {
             size_t offset = 0;
             if (__cvec_mul_overflow(vec->size, vec->element_size, &offset)) {
@@ -252,6 +249,10 @@ static inline cvec_error_code cvec_resize(c_vector_t* vec, const size_t new_size
                 memcpy((uint8_t*)vec->data + loop_offset,
                        default_value, vec->element_size);
             }
+        }
+    }else {
+        if (vec->element_size == 1) {
+            memset((uint8_t*)vec->data + vec->size,0, num_new);
         }
     }
 
@@ -403,14 +404,10 @@ static inline cvec_error_code cvec_pop_discard(c_vector_t* vec) {
     return CVEC_OK;
 }
 
-#define is_cvec(x) _Generic((x), \
-    c_vector_t: true, \
-    default: false \
-)
-
 static inline cvec_error_code cvec_extend(c_vector_t* dst, const c_vector_t* src) {
     if (!dst || !src) return CVEC_ERROR_NULL_POINTER;
     if (dst->element_size != src->element_size) return CVEC_ERROR_INVALID_SIZE;
+    if (dst->element_size == 0) return CVEC_ERROR_NOT_INITIALIZED;
     if (src->size == 0) return CVEC_OK;
     size_t new_size = dst->size + src->size;
     if (new_size < dst->size) return CVEC_ERROR_OVERFLOW;
@@ -628,14 +625,14 @@ static inline cvec_error_code cvec_find_sorted(const c_vector_t* vec, const void
     return CVEC_ERROR_ELEMENT_NOT_FOUND;
 }
 
-static inline cvec_error_code cvec_split(c_vector_t vec, const size_t start, const size_t end, c_vector_t* out_vec) {
+static inline cvec_error_code cvec_split(const c_vector_t* vec, const size_t start, const size_t end, c_vector_t* out_vec) {
     if (!out_vec) return CVEC_ERROR_NULL_POINTER;
-    if (start > end || end > vec.size) return CVEC_ERROR_INVALID_INDEX;
+    if (start > end || end > vec->size || start >= vec->size) return CVEC_ERROR_INVALID_INDEX;
 
     size_t count = end - start;
-    if (count == 0) return cvec_init(out_vec, vec.element_size);
+    if (count == 0) return cvec_init(out_vec, vec->element_size);
 
-    return cvec_from_array(out_vec, (const uint8_t*)vec.data + (start * vec.element_size), count, vec.element_size);
+    return cvec_from_array(out_vec, (const uint8_t*)vec->data + (start * vec->element_size), count, vec->element_size);
 }
 
 static inline cvec_error_code cvec_contains(const c_vector_t* vec, const void* value, cvec_compare_fn compare) {
@@ -643,9 +640,27 @@ static inline cvec_error_code cvec_contains(const c_vector_t* vec, const void* v
     if (vec->size == 0) {
         return CVEC_ERROR_ELEMENT_NOT_FOUND;
     }
-    
+
     int64_t dummy_index = 0;
     return cvec_find(vec, value, compare, &dummy_index) == CVEC_OK ? CVEC_OK : CVEC_ERROR_ELEMENT_NOT_FOUND;
+}
+
+static inline cvec_error_code cvec_count_match(const c_vector_t* vec, const void* value, cvec_compare_fn compare, size_t* out_count) {
+    if (!vec || !value || !compare || !out_count) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size == 0) {
+        *out_count = 0;
+        return CVEC_OK;
+    }
+
+    size_t count = 0;
+    for (size_t i = 0; i < vec->size; i++) {
+        const void* element = (const uint8_t*)vec->data + (i * vec->element_size);
+        if (compare(element, value) == 0) {
+            count++;
+        }
+    }
+    *out_count = count;
+    return CVEC_OK;
 }
 
 #pragma GCC diagnostic pop
