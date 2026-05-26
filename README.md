@@ -442,23 +442,23 @@ The vector automatically manages its internal memory:
 
 ## Performance Characteristics
 
-| Operation | Time Complexity | Notes |
-|-----------|----------------|-------|
-| `cvec_init` | O(1) | Allocates initial capacity of 8 |
-| `cvec_append` | O(1) amortized | O(n) when resizing needed |
-| `cvec_get` | O(1) | Includes bounds check |
-| `cvec_set` | O(1) | Includes bounds check |
-| `cvec_at` | O(1) | No bounds check (fastest) |
-| `cvec_front` | O(1) | Direct access to first element |
-| `cvec_back` | O(1) | Direct access to last element |
-| `cvec_is_empty` | O(1) | Checks size counter |
-| `cvec_remove` | O(n) | Must shift elements |
-| `cvec_clear` | O(1) | Only resets size counter |
-| `cvec_delete` | O(1) | Frees all memory |
-| `cvec_reserve` | O(n) | If reallocation needed |
-| `cvec_from_array` | O(n) | Copies all elements |
-| `cvec_to_array` | O(n) | Copies all elements |
-| `cvec_shrink_to_fit` | O(n) | If reallocation needed |
+| Operation            | Time Complexity | Notes                           |
+|----------------------|-----------------|---------------------------------|
+| `cvec_init`          | O(1)            | Allocates initial capacity of 8 |
+| `cvec_append`        | O(1) amortized  | O(n) when resizing needed       |
+| `cvec_get`           | O(1)            | Includes bounds check           |
+| `cvec_set`           | O(1)            | Includes bounds check           |
+| `cvec_at`            | O(1)            | No bounds check (fastest)       |
+| `cvec_front`         | O(1)            | Direct access to first element  |
+| `cvec_back`          | O(1)            | Direct access to last element   |
+| `cvec_is_empty`      | O(1)            | Checks size counter             |
+| `cvec_remove`        | O(n)            | Must shift elements             |
+| `cvec_clear`         | O(1)            | Only resets size counter        |
+| `cvec_delete`        | O(1)            | Frees all memory                |
+| `cvec_reserve`       | O(n)            | If reallocation needed          |
+| `cvec_from_array`    | O(n)            | Copies all elements             |
+| `cvec_to_array`      | O(n)            | Copies all elements             |
+| `cvec_shrink_to_fit` | O(n)            | If reallocation needed          |
 
 ## Acknowledgments
 
