@@ -521,7 +521,7 @@ static inline cvec_error_code cvec_to_array(const c_vector_t* vec, void** out_ar
     return CVEC_OK;
 }
 
-static inline cvec_error_code cvec_copy(c_vector_t *src, c_vector_t* dst) {
+static inline cvec_error_code cvec_copy(const c_vector_t *src, c_vector_t* dst) {
     cvec_error_code status = CVEC_OK;
     if (!src || !dst) return CVEC_ERROR_NULL_POINTER;
     if (src == dst) return CVEC_OK;
@@ -660,6 +660,31 @@ static inline cvec_error_code cvec_count_match(const c_vector_t* vec, const void
         }
     }
     *out_count = count;
+    return CVEC_OK;
+}
+
+static inline cvec_error_code cvec_max(const c_vector_t* vec, cvec_compare_fn compare_fn, void* out_value) {
+    if (!vec || !out_value || !compare_fn) return CVEC_ERROR_NULL_POINTER;
+    if (vec->size == 0) return CVEC_ERROR_EMPTY_VECTOR;
+    if (vec->element_size == 0) return CVEC_ERROR_ELEMENT_NOT_FOUND;
+
+    const void* max_element = (const uint8_t*)vec->data;
+
+    for (size_t i = 0; i < vec->size; i++) {
+        size_t offset = 0;
+
+        if (cvec__mul_overflow(i, vec->element_size, &offset)) {
+            return CVEC_ERROR_OVERFLOW;
+        }
+
+        const void* current = (const uint8_t*)vec->data + offset;
+
+        if (compare_fn(current, max_element) > 0) {
+            max_element = current;
+        }
+    }
+
+    memcpy(out_value, max_element, vec->element_size);
     return CVEC_OK;
 }
 
